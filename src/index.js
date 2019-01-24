@@ -70,7 +70,6 @@ const args = (() => {
         'tab',
         'quit',
         'blit',
-        'require',
         'headless',
       ],
       string: [
@@ -93,7 +92,6 @@ const args = (() => {
         t: 'tab',
         q: 'quit',
         b: 'blit',
-        r: 'require',
         n: 'headless',
         d: 'download',
       },
@@ -112,7 +110,6 @@ const args = (() => {
       tab: minimistArgs.tab,
       quit: minimistArgs.quit,
       blit: minimistArgs.blit,
-      require: minimistArgs.require,
       headless: minimistArgs.headless,
       download: minimistArgs.download !== undefined ? (minimistArgs.download || path.join(process.cwd(), 'downloads')) : undefined,
     };
