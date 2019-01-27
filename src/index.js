@@ -931,7 +931,7 @@ const _bindWindow = (window, newWindowCb) => {
       }
     }
     
-    windows.splice(GlobalContext.windows.indexOf(window), 1);
+    windows.splice(windows.indexOf(window), 1);
   });
   
   window.addEventListener('error', err => {
