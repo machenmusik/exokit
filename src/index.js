@@ -1605,6 +1605,8 @@ const _bindWindow = (window, newWindowCb) => {
       process.exit();
     });
   }
+  
+  windows.push(window);
   window.addEventListener('destroy', e => {
     const {window} = e;
     for (let i = 0; i < contexts.length; i++) {
@@ -1613,7 +1615,10 @@ const _bindWindow = (window, newWindowCb) => {
         context.destroy();
       }
     }
+    
+    windows.splice(GlobalContext.windows.indexOf(window), 1);
   });
+  
   window.addEventListener('error', err => {
     console.warn('got error', err);
   });
