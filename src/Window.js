@@ -1034,13 +1034,6 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
   const timeouts = [];
   const intervals = [];
   window.tickAnimationFrame = (() => {
-    // emit xr events
-    {
-      window[symbols.mrDisplaysSymbol].xrDisplay.session && window[symbols.mrDisplaysSymbol].xrDisplay.session.update();
-      window[symbols.mrDisplaysSymbol].xmDisplay.session && window[symbols.mrDisplaysSymbol].xmDisplay.session.update();
-    }
-    
-    // call user rafs
     const localCbs = [];
     const _cacheLocalCbs = cbs => {
       for (let i = 0; i < cbs.length; i++) {
@@ -1056,6 +1049,13 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
       }
     };
     function tickAnimationFrame() {
+      // emit xr events
+      {
+        window[symbols.mrDisplaysSymbol].xrDisplay.session && window[symbols.mrDisplaysSymbol].xrDisplay.session.update();
+        window[symbols.mrDisplaysSymbol].xmDisplay.session && window[symbols.mrDisplaysSymbol].xmDisplay.session.update();
+      }
+      
+      // call user rafs
       if (rafCbs.length > 0) {
         _cacheLocalCbs(rafCbs);
 
