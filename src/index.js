@@ -361,8 +361,10 @@ const _startRenderLoop = () => {
   const _blit = () => {
     for (let i = 0; i < contexts.length; i++) {
       const context = contexts[i];
+      
+      // XXX wait for child gl sync object
 
-      const isDirty = (!!context.isDirty && context.isDirty()) || mlPresentState.mlGlContext === context;
+      const isDirty = (!!context.isDirty && context.isDirty()) || mlPresentState.mlGlContext === context; // XXX do we need to track dirty?
       if (isDirty) {
         const windowHandle = context.getWindowHandle();
 
@@ -372,7 +374,7 @@ const _startRenderLoop = () => {
           context.flush();
         }
 
-        const isVisible = nativeWindow.isVisible(windowHandle) || vrPresentState.glContext === context || mlPresentState.mlGlContext === context;
+        const isVisible = nativeWindow.isVisible(windowHandle) || vrPresentState.glContext === context || mlPresentState.mlGlContext === context; // XXX track visible/width/height via child event emits
         if (isVisible) {
           if (vrPresentState.glContext === context && vrPresentState.hasPose) {
             if (vrPresentState.layers.length > 0) {
@@ -401,7 +403,7 @@ const _startRenderLoop = () => {
             mlPresentState.mlHasPose = false;
 
             // nativeWindow.blitFrameBuffer(context, mlPresentState.mlFbo, 0, mlPresentState.mlGlContext.canvas.width, mlPresentState.mlGlContext.canvas.height, xrState.renderWidth[0], xrState.renderHeight[0], true, false, false);
-          } else if (fakePresentState.layers.length > 0) {
+          } else if (fakePresentState.layers.length > 0) { // XXX blit only to the intended context
             nativeWindow.composeLayers(context, 0, fakePresentState.layers, xrState);
           }
         }
@@ -409,7 +411,7 @@ const _startRenderLoop = () => {
         if (isMac) {
           context.bindFramebufferRaw(context.FRAMEBUFFER, null);
         }
-        nativeWindow.swapBuffers(windowHandle);
+        nativeWindow.swapBuffers(windowHandle); // XXX swap buffers on the child side
         if (isMac) {
           const drawFramebuffer = context.getFramebuffer(context.DRAW_FRAMEBUFFER);
           if (drawFramebuffer) {
@@ -735,7 +737,7 @@ const _startRenderLoop = () => {
       }
 
       mlPresentState.mlContext.PrepareFrame(
-        mlPresentState.mlGlContext,
+        mlPresentState.mlGlContext, // gl context for depth population
         mlPresentState.mlMsFbo,
         xrState.renderWidth[0]*2,
         xrState.renderHeight[0],
@@ -900,7 +902,7 @@ const _startRenderLoop = () => {
     nativeBindings.nativeBrowser.Browser.updateAll();
     // update magic leap state
     if (mlPresentState.mlGlContext) {
-      nativeBindings.nativeMl.Update(mlPresentState.mlContext, mlPresentState.mlGlContext);
+      nativeBindings.nativeMl.Update(mlPresentState.mlContext, mlPresentState.mlGlContext); // gl context for mesh buffer population
       nativeBindings.nativeMl.Poll();
     }
     if (args.performance) {
