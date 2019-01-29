@@ -1224,7 +1224,7 @@ const _start = () => {
         window[match[1]] = result;
       } else {
         try {
-          result = window.vm.run(cmd, filename); // XXX vm
+          result = window.runRepl(cmd);
         } catch(e) {
           err = e;
         }
