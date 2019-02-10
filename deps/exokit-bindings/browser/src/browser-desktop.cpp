@@ -4,85 +4,118 @@ using namespace std;
 using namespace v8;
 using namespace node;
 
+#include <iostream>
+
 // helpers
 
 namespace browser {
 
-void CefDoMessageLoopWork2() {
-  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+std::string dataPathString;
+std::map<uintptr_t, LoadHandler*> loadHandlers;
+std::map<uintptr_t, DisplayHandler*> displayHandlers;
+std::map<uintptr_t, RenderHandler*> renderHandlers;
 
-  // Execute
-  cef_do_message_loop_work();
+std::string toString(const cef_string_t *s) {
+  std::string str;
+  if (s) {
+    cef_string_utf8_t cstr;
+    memset(&cstr, 0, sizeof(cstr));
+    cef_string_wide_to_utf8(s->str, s->length, &cstr);
+    if (cstr.length > 0)
+      str = std::string(cstr.str, cstr.length);
+    cef_string_utf8_clear(&cstr);
+  }
+  return str;
+}
+cef_string_t fromString(const std::string &s) {
+  cef_string_t result = {};
+  cef_string_utf8_to_utf16(s.c_str(), s.length(), &result);
+  return result;
 }
 
-CefRefPtr<CefBrowser> CreateBrowserSync(
-    const CefWindowInfo& windowInfo,
-    CefRefPtr<CefClient> client,
-    const CefString& url,
-    const CefBrowserSettings& settings,
-    CefRefPtr<CefRequestContext> request_context) {
-  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
-
-  // Unverified params: client, url, request_context
-
-  // Execute
-  cef_browser_t* _retval = cef_browser_host_create_browser_sync(
-      &windowInfo, CefClientCppToC::Wrap(client), url.GetStruct(), &settings,
-      CefRequestContextCToCpp::Unwrap(request_context));
-
-  // Return type: refptr_same
-  return CefBrowserCToCpp::Wrap(_retval);
+cef_mouse_button_type_t GetMouseButton(int button){
+  switch (button){
+    case 0:
+      return MBT_LEFT;
+    case 1:
+      return MBT_MIDDLE;
+    case 2:
+      return MBT_RIGHT;
+    default:
+      return MBT_LEFT;
+  }
 }
 
-CefBrowserHost::MouseButtonType GetMouseButton(int button){
-	CefBrowserHost::MouseButtonType mouseButton;
-	switch (button){
-		case 0:
-		 mouseButton = CefBrowserHost::MouseButtonType::MBT_LEFT;
-		 break;
-		case 1:
-		 mouseButton = CefBrowserHost::MouseButtonType::MBT_MIDDLE;
-		 break;
-		case 2:
-		 mouseButton = CefBrowserHost::MouseButtonType::MBT_RIGHT;
-		 break;
-	}
-	return mouseButton;
-}
-
-bool CefInitialize2(const CefMainArgs& args,
-                              const CefSettings& settings,
-                              CefRefPtr<CefApp> application,
-                              void* windows_sandbox_info) {
-  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
-
-  // Unverified params: application, windows_sandbox_info
-
-  // Execute
-  int _retval = cef_initialize(
-      &args, &settings, CefAppCppToC::Wrap(application), windows_sandbox_info);
-
-  // Return type: bool
-  return _retval ? true : false;
-}
 bool initializeEmbedded(const std::string &dataPath) {
-  CefMainArgs args;
-  
-	CefSettings settings;
+  cef_main_args_t args = {};
+
+  cef_settings_t settings = {};
   // settings.log_severity = LOGSEVERITY_VERBOSE;
   // CefString(&settings.resources_dir_path) = resourcesPath;
   // CefString(&settings.locales_dir_path) = localesPath;
-  CefString(&settings.cache_path).FromString(dataPath);
-  CefString(&settings.log_file).FromString(dataPath + "/log.txt");
+  cef_string_utf8_to_utf16(dataPath.c_str(), dataPath.length(), &settings.cache_path);
+  std::string logPath = dataPath + "/log.txt";
+  cef_string_utf8_to_utf16(logPath.c_str(), logPath.length(), &settings.log_file);
   settings.no_sandbox = true;
+  settings.size = sizeof(cef_settings_t);
   
-  SimpleApp *app = new SimpleApp(dataPath);
+  dataPathString = dataPath;
   
-	return CefInitialize2(args, settings, app, nullptr);
+  cef_app_t *app = new cef_app_t();
+  memset(app, 0, sizeof(*app));
+  app->base.size = sizeof(cef_app_t);
+  // initialize_cef_base_ref_counted((cef_base_ref_counted_t *)app)
+  app->on_before_command_line_processing = (decltype(app->on_before_command_line_processing))[](
+    struct _cef_app_t *self,
+    const cef_string_t *process_type,
+    struct _cef_command_line_t *command_line
+  ) -> void {
+    {
+      cef_string_t s = fromString(std::string("single-process"));
+      command_line->append_switch(command_line, &s);
+      cef_string_clear(&s);
+    }
+    /* {
+      cef_string_t s = fromString(std::string("no-proxy-server"));
+      command_line->append_switch(command_line, &s);
+      cef_string_clear(&s);
+    } */
+    {
+      cef_string_t s = fromString(std::string("winhttp-proxy-resolver"));
+      command_line->append_switch(command_line, &s);
+      cef_string_clear(&s);
+    }
+    {
+      cef_string_t s = fromString(std::string("no-sandbox"));
+      command_line->append_switch(command_line, &s);
+      cef_string_clear(&s);
+    }
+    {
+      cef_string_t k = fromString(std::string("user-data-dir"));
+      cef_string_t v = fromString(dataPathString);
+      command_line->append_switch_with_value(command_line, &k, &v);
+      cef_string_clear(&k);
+      cef_string_clear(&v);
+    }
+    {
+      cef_string_t k = fromString(std::string("disk-cache-dir"));
+      cef_string_t v = fromString(dataPathString);
+      command_line->append_switch_with_value(command_line, &k, &v);
+      cef_string_clear(&k);
+      cef_string_clear(&v);
+    }
+  };
+  /* app->get_browser_process_handler = (decltype(app->get_browser_process_handler))[](
+    struct _cef_app_t *self
+  ) -> cef_browser_process_handler_t* {
+    return nullptr;
+  }; */
+  
+	return (bool)cef_initialize(&args, &settings, app, nullptr);
 }
 
 void embeddedDoMessageLoopWork() {
-  CefDoMessageLoopWork2();
+  cef_do_message_loop_work();
 }
 
 EmbeddedBrowser createEmbedded(
@@ -94,46 +127,69 @@ EmbeddedBrowser createEmbedded(
   int height,
   int *textureWidth,
   int *textureHeight,
-  std::function<EmbeddedBrowser()> getBrowser,
-  std::function<void(EmbeddedBrowser)> setBrowser,
+  EmbeddedBrowser *browserPtr,
   std::function<void()> onloadstart,
   std::function<void(const std::string &)> onloadend,
   std::function<void(int, const std::string &, const std::string &)> onloaderror,
   std::function<void(const std::string &, const std::string &, int)> onconsole,
   std::function<void(const std::string &)> onmessage
 ) {
-  EmbeddedBrowser browser_ = getBrowser();
+  EmbeddedBrowser &browser_ = *browserPtr;
   
   if (width == 0) {
-    width = ((BrowserClient *)browser_->GetHost()->GetClient().get())->m_renderHandler->width;
+    RenderHandler *render_handler_ = renderHandlers[(uintptr_t)browser_];
+    width = render_handler_->width;
   }
   if (height == 0) {
-    height = ((BrowserClient *)browser_->GetHost()->GetClient().get())->m_renderHandler->height;
+    RenderHandler *render_handler_ = renderHandlers[(uintptr_t)browser_];
+    height = render_handler_->height;
   }
 
   if (browser_) {
-    browser_->GetHost()->CloseBrowser(true);
-    setBrowser(nullptr);
+    cef_browser_host_t *browserHost = browser_->get_host(browser_);
+    browserHost->close_browser(browserHost, 1);
+    browser_ = nullptr;
     
     *textureWidth = 0;
     *textureHeight = 0;
   }
+  // XXX register handlers for these functions
+  // cef_browser_host_t *browserHost = browser_->get_host(browser_);
+  // cef_client_t *browserClient = browserHost->get_client(browserHost);
   
   LoadHandler *load_handler_ = new LoadHandler(
-    [getBrowser, onloadstart]() -> void {
-      getBrowser()->GetMainFrame()->ExecuteJavaScript(CefString("window.postMessage = m => {console.log('<postMessage>' + JSON.stringify(m));};"), CefString("<bootstrap>"), 1);
-      
+    [browserPtr, onloadstart]() -> void {
+      EmbeddedBrowser &browser_ = *browserPtr;
+      cef_frame_t *frame = browser_->get_main_frame(browser_);
+
+      cef_string_t cef_scriptString = {};
+      constexpr char *scriptString = "window.postMessage = m => {console.log('<postMessage>' + JSON.stringify(m));};";
+      cef_string_utf8_to_utf16(scriptString, sizeof(scriptString)-1, &cef_scriptString);
+
+      cef_string_t cef_filenameString = {};
+      constexpr char *filenameString = "window.postMessage = m => {console.log('<postMessage>' + JSON.stringify(m));};";
+      cef_string_utf8_to_utf16(filenameString, sizeof(filenameString)-1, &cef_filenameString);
+
+      frame->execute_java_script(frame, &cef_scriptString, &cef_filenameString, 1);
+      cef_string_clear(&cef_scriptString);
+      cef_string_clear(&cef_filenameString);
+
       onloadstart();
     },
-    [getBrowser, onloadend]() -> void {
-      CefString loadUrl = getBrowser()->GetMainFrame()->GetURL();
-      onloadend(loadUrl.ToString());
+    [browserPtr, onloadend]() -> void {
+      EmbeddedBrowser &browser_ = *browserPtr;
+      cef_frame_t *frame = browser_->get_main_frame(browser_);
+      cef_string_userfree_t loadUrl = frame->get_url(frame);
+      
+      std::string utf8String = toString(loadUrl);
+      onloadend(utf8String);
+      
+      cef_string_userfree_utf16_free(loadUrl);
     },
     [onloaderror](int errorCode, const std::string &errorString, const std::string &failedUrl) -> void {
       onloaderror(errorCode, errorString, failedUrl);
     }
   );
-  
   DisplayHandler *display_handler_ = new DisplayHandler(
     [onconsole](const std::string &jsString, const std::string &scriptUrl, int startLine) -> void {
       onconsole(jsString, scriptUrl, startLine);
@@ -142,9 +198,8 @@ EmbeddedBrowser createEmbedded(
       onmessage(m);
     }
   );
-  
   RenderHandler *render_handler_ = new RenderHandler(
-    [gl, tex, textureWidth, textureHeight, width, height](const CefRenderHandler::RectList &dirtyRects, const void *buffer, int width, int height) -> void {
+    [gl, tex, textureWidth, textureHeight, width, height](const cef_rect_t *dirtyRects, size_t dirtyRectsCount, const void *buffer, int width, int height) -> void {
       RunOnMainThread([&]() -> void {
         windowsystem::SetCurrentWindowContext(gl->windowHandle);
         
@@ -166,8 +221,8 @@ EmbeddedBrowser createEmbedded(
           *textureHeight = height;
         }
 
-        for (size_t i = 0; i < dirtyRects.size(); i++) {
-          const CefRect &rect = dirtyRects[i];
+        for (size_t i = 0; i < dirtyRectsCount; i++) {
+          const cef_rect_t &rect = dirtyRects[i];
           
           glPixelStorei(GL_UNPACK_SKIP_PIXELS, rect.x);
           glPixelStorei(GL_UNPACK_SKIP_ROWS, rect.y);
@@ -192,71 +247,240 @@ EmbeddedBrowser createEmbedded(
     height
   );
   
-  CefWindowInfo window_info;
-  window_info.SetAsWindowless((CefWindowHandle)NULL);
-  CefBrowserSettings browserSettings;
+  cef_window_info_t window_info = {};
+  window_info.windowless_rendering_enabled = 1;
+  
+  cef_client_t *client = new cef_client_t();
+  memset(client, 0, sizeof(*client));
+  client->base.size = sizeof(cef_client_t);
+  // initialize_cef_base_ref_counted((cef_base_ref_counted_t *)client);
+  client->get_load_handler = (decltype(client->get_load_handler))[](cef_client_t *self) -> cef_load_handler_t* {
+    cef_load_handler_t *result = new cef_load_handler_t();
+    memset(result, 0, sizeof(*result));
+    result->base.size = sizeof(cef_load_handler_t);
+    // initialize_cef_base_ref_counted((cef_base_ref_counted_t *)result);
+    /* result->on_loading_state_change = (decltype(result->on_loading_state_change))[](
+      struct _cef_load_handler_t *self,
+      struct _cef_browser_t *browser,
+      int isLoading,
+      int canGoBack,
+      int canGoForward
+    ) -> void {
+      LoadHandler *load_handler_ = (LoadHandler *)loadHandlers[self];
+      // XXX finish this
+    }; */
+    result->on_load_start = (decltype(result->on_load_start))[](
+      struct _cef_load_handler_t* self,
+      struct _cef_browser_t* browser,
+      struct _cef_frame_t* frame,
+      cef_transition_type_t transition_type
+    ) -> void {
+      LoadHandler *load_handler_ = loadHandlers[(uintptr_t)self];
+      load_handler_->OnLoadStart(browser, frame, transition_type);
+    };
+    result->on_load_end = (decltype(result->on_load_end))[](
+      struct _cef_load_handler_t* self,
+      struct _cef_browser_t* browser,
+      struct _cef_frame_t* frame,
+      int httpStatusCode
+    ) -> void {
+      LoadHandler *load_handler_ = loadHandlers[(intptr_t)self];
+      load_handler_->OnLoadEnd(browser, frame, httpStatusCode);
+    };
+    result->on_load_error = (decltype(result->on_load_error))[](
+      struct _cef_load_handler_t* self,
+      struct _cef_browser_t* browser,
+      struct _cef_frame_t* frame,
+      cef_errorcode_t errorCode,
+      const cef_string_t* errorText,
+      const cef_string_t* failedUrl
+    ) -> void {
+      LoadHandler *load_handler_ = loadHandlers[(uintptr_t)self];
+      load_handler_->OnLoadError(browser, frame, errorCode, errorText, failedUrl);
+    };
+    loadHandlers[(uintptr_t)result] = loadHandlers[(intptr_t)self];
+    return result;
+  };
+  client->get_display_handler = (decltype(client->get_display_handler))[](cef_client_t *self) -> cef_display_handler_t* {
+    cef_display_handler_t *result = new cef_display_handler_t();
+    memset(result, 0, sizeof(*result));
+    result->base.size = sizeof(cef_display_handler_t);
+    // initialize_cef_base_ref_counted((cef_base_ref_counted_t *)result);
+    result->on_console_message = (decltype(result->on_console_message))[](
+      struct _cef_display_handler_t* self,
+      struct _cef_browser_t* browser,
+      cef_log_severity_t level,
+      const cef_string_t* message,
+      const cef_string_t* source,
+      int line
+    ) -> int {
+      DisplayHandler *display_handler_ = displayHandlers[(uintptr_t)self];
+      display_handler_->OnConsoleMessage(browser, level, message, source, line);
+      return 1;
+    };
+    displayHandlers[(uintptr_t)result] = displayHandlers[(intptr_t)self];
+    return result;
+  };
+  client->get_render_handler = (decltype(client->get_render_handler))[](cef_client_t *self) -> cef_render_handler_t* {
+    cef_render_handler_t *result = new cef_render_handler_t();
+    memset(result, 0, sizeof(*result));
+    result->base.size = sizeof(cef_render_handler_t);
+    // initialize_cef_base_ref_counted((cef_base_ref_counted_t *)result);
+    result->get_view_rect = (decltype(result->get_view_rect))[](
+      struct _cef_render_handler_t* self,
+      struct _cef_browser_t* browser,
+      cef_rect_t* rect
+    ) -> void {
+      RenderHandler *render_handler_ = renderHandlers[(intptr_t)self];
+      render_handler_->GetViewRect(rect);
+    };
+    result->on_paint = (decltype(result->on_paint))[](
+      struct _cef_render_handler_t* self,
+      struct _cef_browser_t* browser,
+      cef_paint_element_type_t type,
+      size_t dirtyRectsCount,
+      const cef_rect_t *dirtyRects,
+      const void* buffer,
+      int width,
+      int height
+    ) -> void {
+      RenderHandler *render_handler_ = renderHandlers[(intptr_t)self];
+      render_handler_->OnPaint(dirtyRects, dirtyRectsCount, buffer, width, height);
+    };
+    renderHandlers[(uintptr_t)result] = renderHandlers[(intptr_t)self];
+    return result;
+  };
+  
+  loadHandlers[(uintptr_t)client] = load_handler_;
+  displayHandlers[(uintptr_t)client] = display_handler_;
+  renderHandlers[(uintptr_t)client] = render_handler_;
+  
+  cef_string_t cef_url = fromString(url);
+  
+  cef_browser_settings_t browser_settings = {};
   // browserSettings.windowless_frame_rate = 60; // 30 is default
-  BrowserClient *client = new BrowserClient(load_handler_, display_handler_, render_handler_);
+  browser_settings.size = sizeof(cef_browser_settings_t);
   
-  return CreateBrowserSync(window_info, client, url, browserSettings, nullptr);
+  // BrowserClient *client = new BrowserClient(load_handler_, display_handler_, render_handler_);
+ 
+  EmbeddedBrowser result = cef_browser_host_create_browser_sync(&window_info, client, &cef_url, &browser_settings, nullptr);
+  cef_string_clear(&cef_url);
+  return std::move(result);
+  // return CreateBrowserSync(window_info, client, url, browserSettings, nullptr);
 }
-void destroyEmbedded(EmbeddedBrowser browser_) {
-  browser_->GetHost()->CloseBrowser(false);
+void destroyEmbedded(EmbeddedBrowser *browser_) {
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  browserHost->close_browser(browserHost, 1);
 }
-int getEmbeddedWidth(EmbeddedBrowser browser_) {
-  return ((BrowserClient *)browser_->GetHost()->GetClient().get())->m_renderHandler->width;
+int getEmbeddedWidth(EmbeddedBrowser *browser_) {
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  cef_client_t *browserClient = browserHost->get_client(browserHost);
+  RenderHandler *render_handler_ = renderHandlers[(uintptr_t)browserClient];
+  return render_handler_->width;
+  // return ((BrowserClient *)browser_->GetHost()->GetClient())->m_renderHandler->width;
 }
-void setEmbeddedWidth(EmbeddedBrowser browser_, int width) {
-  ((BrowserClient *)browser_->GetHost()->GetClient().get())->m_renderHandler->width = width;
-  
-  browser_->GetHost()->WasResized();
+void setEmbeddedWidth(EmbeddedBrowser *browser_, int width) {
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  cef_client_t *browserClient = browserHost->get_client(browserHost);
+  RenderHandler *render_handler_ = renderHandlers[(uintptr_t)browserClient];
+  render_handler_->width = width;
+  // ((BrowserClient *)browser_->GetHost()->GetClient())->m_renderHandler->width = width; // XXX implement this
+
+  // browser_->GetHost()->WasResized();
   // browser->browser_->GetHost()->Invalidate(PET_VIEW);
+  browserHost->was_resized(browserHost);
 }
-int getEmbeddedHeight(EmbeddedBrowser browser_) {
-  return ((BrowserClient *)browser_->GetHost()->GetClient().get())->m_renderHandler->height;
+int getEmbeddedHeight(EmbeddedBrowser *browser_) {
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  cef_client_t *browserClient = browserHost->get_client(browserHost);
+  RenderHandler *render_handler_ = renderHandlers[(uintptr_t)browserClient];
+  return render_handler_->height;
+  // return ((BrowserClient *)browser_->GetHost()->GetClient())->m_renderHandler->height;
 }
-void setEmbeddedHeight(EmbeddedBrowser browser_, int height) {
-  ((BrowserClient *)browser_->GetHost()->GetClient().get())->m_renderHandler->height = height;
-  
-  browser_->GetHost()->WasResized();
+void setEmbeddedHeight(EmbeddedBrowser *browser_, int height) {
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  cef_client_t *browserClient = browserHost->get_client(browserHost);
+  RenderHandler *render_handler_ = renderHandlers[(uintptr_t)browserClient];
+  render_handler_->height = height;
+  // ((BrowserClient *)browser_->GetHost()->GetClient())->m_renderHandler->height = height; // XXX implement this
+
+  // browser_->GetHost()->WasResized();
   // browser->browser_->GetHost()->Invalidate(PET_VIEW);
+  browserHost->was_resized(browserHost);
 }
-void embeddedGoBack(EmbeddedBrowser browser_) {
-  browser_->GoBack();
+void embeddedGoBack(EmbeddedBrowser *browser_) {
+  EmbeddedBrowser &browser = *browser_;
+  browser->go_back(browser);
 }
-void embeddedGoForward(EmbeddedBrowser browser_) {
-  browser_->GoForward();
+void embeddedGoForward(EmbeddedBrowser *browser_) {
+  EmbeddedBrowser &browser = *browser_;
+  browser->go_forward(browser);
 }
-void embeddedReload(EmbeddedBrowser browser_) {
-  browser_->Reload();
+void embeddedReload(EmbeddedBrowser *browser_) {
+  EmbeddedBrowser &browser = *browser_;
+  browser->reload(browser);
 }
-void embeddedMouseMove(EmbeddedBrowser browser_, int x, int y) {
-  CefMouseEvent evt;
-  evt.x = x;
-  evt.y = y;
+void embeddedMouseMove(EmbeddedBrowser *browser_, int x, int y) {
+  cef_mouse_event_t event = {};
+  event.x = x;
+  event.y = y;
 
-  browser_->GetHost()->SendMouseMoveEvent(evt, false);
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  browserHost->send_mouse_move_event(
+    browserHost,
+    &event,
+    0 // mouseLeave
+  );
 }
-void embeddedMouseDown(EmbeddedBrowser browser_, int x, int y, int button) {
-  CefMouseEvent evt;
-  evt.x = x;
-  evt.y = y;
+void embeddedMouseDown(EmbeddedBrowser *browser_, int x, int y, int button) {
+  cef_mouse_event_t event = {};
+  event.x = x;
+  event.y = y;
 
-  browser_->GetHost()->SendMouseClickEvent(evt, GetMouseButton(button), false, 1);
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  browserHost->send_mouse_click_event(
+    browserHost,
+    &event,
+    GetMouseButton(button),
+    0, // mouseUp
+    1 // clickCount
+  );
 }
-void embeddedMouseUp(EmbeddedBrowser browser_, int x, int y, int button) {
-  CefMouseEvent evt;
-  evt.x = x;
-  evt.y = y;
+void embeddedMouseUp(EmbeddedBrowser *browser_, int x, int y, int button) {
+  cef_mouse_event_t event = {};
+  event.x = x;
+  event.y = y;
 
-  browser_->GetHost()->SendMouseClickEvent(evt, GetMouseButton(button), true, 1);
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  browserHost->send_mouse_click_event(
+    browserHost,
+    &event,
+    GetMouseButton(button),
+    1, // mouseUp
+    1 // clickCount
+  );
 }
-void embeddedMouseWheel(EmbeddedBrowser browser_, int x, int y, int deltaX, int deltaY) {
-  CefMouseEvent evt;
-  evt.x = x;
-  evt.y = y;
+void embeddedMouseWheel(EmbeddedBrowser *browser_, int x, int y, int deltaX, int deltaY) {
+  cef_mouse_event_t event = {};
+  event.x = x;
+  event.y = y;
 
-  browser_->GetHost()->SendMouseWheelEvent(evt, deltaX, deltaY);
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  browserHost->send_mouse_wheel_event(
+    browserHost,
+    &event,
+    deltaX,
+    deltaY
+  );
 }
 int modifiers2int(int modifiers) {
   int result = 0;
@@ -271,50 +495,78 @@ int modifiers2int(int modifiers) {
   }
   return result;
 }
-void embeddedKeyDown(EmbeddedBrowser browser_, int key, int wkey, int modifiers) {
-  CefKeyEvent evt = {};
-  evt.type = KEYEVENT_RAWKEYDOWN;
-  evt.character = key;
-  evt.native_key_code = key;
-  evt.windows_key_code = wkey;
-  evt.unmodified_character = key;
-  // evt.is_system_key = false;
-  // evt.focus_on_editable_field = true;
-  evt.modifiers = modifiers2int(modifiers);
+void embeddedKeyDown(EmbeddedBrowser *browser_, int key, int wkey, int modifiers) {
+  cef_key_event_t event = {};
+  event.type = KEYEVENT_RAWKEYDOWN;
+  event.character = key;
+  event.native_key_code = key;
+  event.windows_key_code = wkey;
+  event.unmodified_character = key;
+  // event.is_system_key = false;
+  // event.focus_on_editable_field = true;
+  event.modifiers = modifiers2int(modifiers);
+
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  browserHost->send_key_event(
+    browserHost,
+    &event
+  );
+}
+void embeddedKeyUp(EmbeddedBrowser *browser_, int key, int wkey, int modifiers) {
+  cef_key_event_t event = {};
+  event.type = KEYEVENT_KEYUP;
+  event.character = key;
+  event.native_key_code = key;
+  event.windows_key_code = wkey;
+  event.unmodified_character = key;
+  // event.is_system_key = false;
+  // event.focus_on_editable_field = true;
+  event.modifiers = modifiers2int(modifiers);
+
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  browserHost->send_key_event(
+    browserHost,
+    &event
+  );
+}
+void embeddedKeyPress(EmbeddedBrowser *browser_, int key, int wkey, int modifiers) {
+  cef_key_event_t event = {};
+  event.type = KEYEVENT_CHAR;
+  event.character = key;
+  event.native_key_code = key;
+  event.windows_key_code = wkey;
+  event.unmodified_character = key;
+  // event.is_system_key = false;
+  // event.focus_on_editable_field = true;
+  event.modifiers = modifiers2int(modifiers);
+
+  EmbeddedBrowser &browser = *browser_;
+  cef_browser_host_t *browserHost = browser->get_host(browser);
+  browserHost->send_key_event(
+    browserHost,
+    &event
+  );
+}
+void embeddedRunJs(EmbeddedBrowser *browser_, const std::string &jsString, const std::string &scriptUrl, int startLine) {
+  // cef_browser_host_t *browserHost = browser_->get_host(browser_);
+  EmbeddedBrowser &browser = *browser_;
+  cef_frame_t *frame = browser->get_main_frame(browser);
   
-  browser_->GetHost()->SendKeyEvent(evt);
-}
-void embeddedKeyUp(EmbeddedBrowser browser_, int key, int wkey, int modifiers) {
-  CefKeyEvent evt = {};
-  evt.type = KEYEVENT_KEYUP;
-  evt.character = key;
-  evt.native_key_code = key;
-  evt.windows_key_code = wkey;
-  evt.unmodified_character = key;
-  // evt.is_system_key = false;
-  // evt.focus_on_editable_field = true;
-  evt.modifiers = modifiers2int(modifiers);
+  cef_string_t cef_jstring = {};
+  cef_string_utf8_to_utf16(jsString.c_str(), jsString.length(), &cef_jstring);
 
-  browser_->GetHost()->SendKeyEvent(evt);
-}
-void embeddedKeyPress(EmbeddedBrowser browser_, int key, int wkey, int modifiers) {
-  CefKeyEvent evt = {};
-  evt.type = KEYEVENT_CHAR;
-  evt.character = key;
-  evt.native_key_code = key;
-  evt.windows_key_code = wkey;
-  evt.unmodified_character = key;
-  // evt.is_system_key = false;
-  // evt.focus_on_editable_field = true;
-  evt.modifiers = modifiers2int(modifiers);
+  cef_string_t cef_scriptUrl = {};
+  cef_string_utf8_to_utf16(scriptUrl.c_str(), scriptUrl.length(), &cef_scriptUrl);
 
-  browser_->GetHost()->SendKeyEvent(evt);
-}
-void embeddedRunJs(EmbeddedBrowser browser_, const std::string &jsString, const std::string &scriptUrl, int startLine) {
-  browser_->GetMainFrame()->ExecuteJavaScript(CefString(jsString), CefString(scriptUrl), startLine);
+  frame->execute_java_script(frame, &cef_jstring, &cef_scriptUrl, startLine);
+  cef_string_clear(&cef_jstring);
+  cef_string_clear(&cef_scriptUrl);
+  // browser_->GetMainFrame()->ExecuteJavaScript(CefString(jsString), CefString(scriptUrl), startLine);
 }
 
-// SimpleApp
+/* // SimpleApp
 
 SimpleApp::SimpleApp(const std::string &dataPath) : dataPath(dataPath) {}
 
@@ -330,7 +582,7 @@ void SimpleApp::OnBeforeCommandLineProcessing(const CefString &process_type, Cef
 
 void SimpleApp::OnContextInitialized() {
   // CEF_REQUIRE_UI_THREAD();
-}
+} */
 
 // LoadHandler
 
@@ -338,16 +590,18 @@ LoadHandler::LoadHandler(std::function<void()> onLoadStart, std::function<void()
 
 LoadHandler::~LoadHandler() {}
 
-void LoadHandler::OnLoadStart(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, TransitionType transition_type) {
+void LoadHandler::OnLoadStart(cef_browser_t *browser, cef_frame_t *frame, cef_transition_type_t transition_type) {
   onLoadStart();
 }
 
-void LoadHandler::OnLoadEnd(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode) {
+void LoadHandler::OnLoadEnd(cef_browser_t *browser, cef_frame_t *frame, int httpStatusCode) {
   onLoadEnd();
 }
 
-void LoadHandler::OnLoadError(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, ErrorCode errorCode, const CefString &errorText, const CefString &failedUrl) {
-  onLoadError((int)errorCode, errorText.ToString(), failedUrl.ToString());
+void LoadHandler::OnLoadError(cef_browser_t *browser, cef_frame_t *frame, cef_errorcode_t errorCode, const cef_string_t *errorText, const cef_string_t *failedUrl) {
+  std::string utf8ErrorText = toString(errorText);
+  std::string utf8FailedUrl = toString(failedUrl);
+  onLoadError((int)errorCode, utf8ErrorText, utf8FailedUrl);
 }
 
 // DisplayHandler
@@ -357,13 +611,17 @@ DisplayHandler::DisplayHandler(std::function<void(const std::string &, const std
 DisplayHandler::~DisplayHandler() {}
 
 const std::string postMessageConsolePrefix("<postMessage>");
-bool DisplayHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser, cef_log_severity_t level, const CefString &message, const CefString &source, int line) {
-  std::string m = message.ToString();
+bool DisplayHandler::OnConsoleMessage(cef_browser_t *browser, cef_log_severity_t level, const cef_string_t *message, const cef_string_t *source, int line) {
+  std::string m = toString(message);
   
   if (!m.compare(0, postMessageConsolePrefix.size(), postMessageConsolePrefix)) {
     onMessage(m.substr(postMessageConsolePrefix.size()));
   } else {
-    onConsole(m, source.length() > 0 ? source.ToString() : std::string("<unknown>"), line);
+    std::string sourceString = toString(source);
+    if (sourceString.length() == 0) {
+      sourceString = "<unknown>";
+    }
+    onConsole(m, sourceString, line);
   }
   
   return true;
@@ -375,25 +633,22 @@ RenderHandler::RenderHandler(OnPaintFn onPaint, int width, int height) : onPaint
 
 RenderHandler::~RenderHandler() {}
 
-/* void RenderHandler::resize(int w, int h) {
-	width = w;
-	height = h;
-} */
-
-bool RenderHandler::GetViewRect(CefRefPtr<CefBrowser> browser, CefRect &rect) {
-	rect = CefRect(0, 0, width, height);
-	return true;
+void RenderHandler::GetViewRect(cef_rect_t *rect) {
+  rect->x = 0;
+  rect->y = 0;
+  rect->width = width;
+  rect->height = height;
 }
 
-void RenderHandler::OnPaint(CefRefPtr<CefBrowser> browser, PaintElementType type, const RectList &dirtyRects, const void *buffer, int width, int height) {
-  onPaint(dirtyRects, buffer, width, height);
+void RenderHandler::OnPaint(const cef_rect_t *dirtyRects, size_t dirtyRectsCount, const void *buffer, int width, int height) {
+  onPaint(dirtyRects, dirtyRectsCount, buffer, width, height);
 }
 
-// BrowserClient
+/* // BrowserClient
 
-BrowserClient::BrowserClient(LoadHandler *loadHandler, DisplayHandler *displayHandler, RenderHandler *renderHandler/*, LifeSpanHandler *lifespanHandler*/) :
-  m_loadHandler(loadHandler), m_displayHandler(displayHandler), m_renderHandler(renderHandler)/*, m_lifespanHandler(lifespanHandler)*/ {}
+BrowserClient::BrowserClient(LoadHandler *loadHandler, DisplayHandler *displayHandler, RenderHandler *renderHandler) :
+  m_loadHandler(loadHandler), m_displayHandler(displayHandler), m_renderHandler(renderHandler) {}
 
-BrowserClient::~BrowserClient() {}
+BrowserClient::~BrowserClient() {} */
 
 }

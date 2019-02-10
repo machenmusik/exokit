@@ -16,7 +16,7 @@ using namespace node;
 
 namespace browser {
 
-// SimpleApp
+/* // SimpleApp
 
 class SimpleApp : public CefApp, public CefBrowserProcessHandler {
 public:
@@ -38,24 +38,24 @@ protected:
 private:
   // Include the default reference counting implementation.
   IMPLEMENT_REFCOUNTING(SimpleApp);
-};
+}; */
 
 // LoadHandler
 
-class LoadHandler : public CefLoadHandler {
+class LoadHandler {
 public:
 	LoadHandler(std::function<void()> onLoadStart, std::function<void()> onLoadEnd, std::function<void(int, const std::string &, const std::string &)> onLoadError);
   ~LoadHandler();
 
 	// CefRenderHandler interface
 public:
-	virtual void OnLoadStart(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, TransitionType transition_type) override;
-	virtual void OnLoadEnd(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode) override;
-	virtual void OnLoadError(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, ErrorCode errorCode, const CefString& errorText, const CefString &failedUrl) override;
+	void OnLoadStart(cef_browser_t *browser, cef_frame_t *frame, cef_transition_type_t transition_type);
+	void OnLoadEnd(cef_browser_t *browser, cef_frame_t *frame, int httpStatusCode);
+  void OnLoadError(cef_browser_t *browser, cef_frame_t *frame, cef_errorcode_t errorCode, const cef_string_t *errorText, const cef_string_t *failedUrl);
 
 	// CefBase interface
-private:
-  IMPLEMENT_REFCOUNTING(LoadHandler);
+// private:
+  // IMPLEMENT_REFCOUNTING(LoadHandler);
 
 private:
   std::function<void()> onLoadStart;
@@ -65,18 +65,18 @@ private:
 
 // DisplayHandler
 
-class DisplayHandler : public CefDisplayHandler {
+class DisplayHandler {
 public:
 	DisplayHandler(std::function<void(const std::string &, const std::string &, int)> onConsole, std::function<void(const std::string &)> onMessage);
   ~DisplayHandler();
 
 	// CefRenderHandler interface
 public:
-	virtual bool OnConsoleMessage(CefRefPtr<CefBrowser> browser, cef_log_severity_t level, const CefString &message, const CefString &source, int line) override;
+	bool OnConsoleMessage(cef_browser_t *browser, cef_log_severity_t level, const cef_string_t *message, const cef_string_t *source, int line);
 
 	// CefBase interface
-private:
-  IMPLEMENT_REFCOUNTING(DisplayHandler);
+// private:
+  // IMPLEMENT_REFCOUNTING(DisplayHandler);
 
 private:
   std::function<void(const std::string &, const std::string &, int)> onConsole;
@@ -85,30 +85,28 @@ private:
 
 // RenderHandler
 
-class RenderHandler : public CefRenderHandler {
+class RenderHandler {
 public:
-  typedef std::function<void(const RectList &, const void *, int, int)> OnPaintFn;
+  typedef std::function<void(const cef_rect_t *dirtyRects, size_t dirtyRectsCount, const void *, int, int)> OnPaintFn;
   
 	RenderHandler(OnPaintFn onPaint, int width, int height);
   ~RenderHandler();
 
-	// void resize(int w, int h);
-
 	// CefRenderHandler interface
-	virtual bool GetViewRect(CefRefPtr<CefBrowser> browser, CefRect &rect) override;
-	virtual void OnPaint(CefRefPtr<CefBrowser> browser, PaintElementType type, const RectList &dirtyRects, const void *buffer, int width, int height) override;
+  void GetViewRect(cef_rect_t *rect);
+	void OnPaint(const cef_rect_t *dirtyRects, size_t dirtyRectsCount, const void *buffer, int width, int height);
 
 // protected:
   int width;
 	int height;
-  std::function<void(const RectList &, const void *, int, int)> onPaint;
+  OnPaintFn onPaint;
 
 	// CefBase interface
-private:
-  IMPLEMENT_REFCOUNTING(RenderHandler);
+// private:
+  // IMPLEMENT_REFCOUNTING(RenderHandler);
 };
 
-// BrowserClient
+/* // BrowserClient
 
 class BrowserClient : public CefClient {
 public:
@@ -131,7 +129,7 @@ public:
 
 private:
 	IMPLEMENT_REFCOUNTING(BrowserClient);
-};
+}; */
 
 }
 
