@@ -80,7 +80,6 @@
                 'openvr_api.lib',
                 'Leap.lib',
                 'libcef.lib',
-                'libcef_dll_wrapper.lib',
               ],
               'copies': [
                 {
