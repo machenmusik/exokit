@@ -629,7 +629,7 @@ bool DisplayHandler::OnConsoleMessage(cef_browser_t *browser, cef_log_severity_t
 
 // RenderHandler
 
-RenderHandler::RenderHandler(OnPaintFn onPaint, int width, int height) : onPaint(onPaint), width(width), height(height) {}
+RenderHandler::RenderHandler(OnPaintFn onPaint, int width, int height) : width(width), height(height), onPaint(onPaint) {}
 
 RenderHandler::~RenderHandler() {}
 
