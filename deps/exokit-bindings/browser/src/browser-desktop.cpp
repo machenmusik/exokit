@@ -20,7 +20,7 @@ std::string toString(const cef_string_t *s) {
   if (s) {
     cef_string_utf8_t cstr;
     memset(&cstr, 0, sizeof(cstr));
-    cef_string_wide_to_utf8(s->str, s->length, &cstr);
+    cef_string_to_utf8(s->str, s->length, &cstr);
     if (cstr.length > 0)
       str = std::string(cstr.str, cstr.length);
     cef_string_utf8_clear(&cstr);
