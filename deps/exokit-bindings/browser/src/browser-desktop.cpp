@@ -27,9 +27,12 @@ std::string toString(const cef_string_t *s) {
   }
   return str;
 }
+void fromString(cef_string_t &result, const std::string &s) {
+  cef_string_utf8_to_utf16(s.c_str(), s.length(), &result);
+}
 cef_string_t fromString(const std::string &s) {
   cef_string_t result = {};
-  cef_string_utf8_to_utf16(s.c_str(), s.length(), &result);
+  fromString(result, s);
   return result;
 }
 
@@ -53,9 +56,8 @@ bool initializeEmbedded(const std::string &dataPath) {
   // settings.log_severity = LOGSEVERITY_VERBOSE;
   // CefString(&settings.resources_dir_path) = resourcesPath;
   // CefString(&settings.locales_dir_path) = localesPath;
-  cef_string_utf8_to_utf16(dataPath.c_str(), dataPath.length(), &settings.cache_path);
-  std::string logPath = dataPath + "/log.txt";
-  cef_string_utf8_to_utf16(logPath.c_str(), logPath.length(), &settings.log_file);
+  fromString(settings.cache_path, dataPath);
+  fromString(settings.log_file, dataPath + "/log.txt");
   settings.no_sandbox = true;
   settings.size = sizeof(cef_settings_t);
   
@@ -162,14 +164,8 @@ EmbeddedBrowser createEmbedded(
       EmbeddedBrowser &browser_ = *browserPtr;
       cef_frame_t *frame = browser_->get_main_frame(browser_);
 
-      cef_string_t cef_scriptString = {};
-      constexpr char *scriptString = "window.postMessage = m => {console.log('<postMessage>' + JSON.stringify(m));};";
-      cef_string_utf8_to_utf16(scriptString, sizeof(scriptString)-1, &cef_scriptString);
-
-      cef_string_t cef_filenameString = {};
-      constexpr char *filenameString = "window.postMessage = m => {console.log('<postMessage>' + JSON.stringify(m));};";
-      cef_string_utf8_to_utf16(filenameString, sizeof(filenameString)-1, &cef_filenameString);
-
+      cef_string_t cef_scriptString = fromString(std::string("window.postMessage = m => {console.log('<postMessage>' + JSON.stringify(m));};"));
+      cef_string_t cef_filenameString = fromString(std::string("window.postMessage = m => {console.log('<postMessage>' + JSON.stringify(m));};"));
       frame->execute_java_script(frame, &cef_scriptString, &cef_filenameString, 1);
       cef_string_clear(&cef_scriptString);
       cef_string_clear(&cef_filenameString);
@@ -184,7 +180,7 @@ EmbeddedBrowser createEmbedded(
       std::string utf8String = toString(loadUrl);
       onloadend(utf8String);
       
-      cef_string_userfree_utf16_free(loadUrl);
+      cef_string_userfree_free(loadUrl);
     },
     [onloaderror](int errorCode, const std::string &errorString, const std::string &failedUrl) -> void {
       onloaderror(errorCode, errorString, failedUrl);
@@ -554,12 +550,8 @@ void embeddedRunJs(EmbeddedBrowser *browser_, const std::string &jsString, const
   EmbeddedBrowser &browser = *browser_;
   cef_frame_t *frame = browser->get_main_frame(browser);
   
-  cef_string_t cef_jstring = {};
-  cef_string_utf8_to_utf16(jsString.c_str(), jsString.length(), &cef_jstring);
-
-  cef_string_t cef_scriptUrl = {};
-  cef_string_utf8_to_utf16(scriptUrl.c_str(), scriptUrl.length(), &cef_scriptUrl);
-
+  cef_string_t cef_jstring = fromString(jsString);
+  cef_string_t cef_scriptUrl = fromString(scriptUrl);
   frame->execute_java_script(frame, &cef_jstring, &cef_scriptUrl, startLine);
   cef_string_clear(&cef_jstring);
   cef_string_clear(&cef_scriptUrl);
