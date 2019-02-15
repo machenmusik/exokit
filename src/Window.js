@@ -74,7 +74,6 @@ const {urls} = require('./urls');
 
 const bindings = require('./native-bindings');
 const {
-  nativeVm,
   nativeImage: Image,
   nativeImageData: ImageData,
   nativeImageBitmap: ImageBitmap,
@@ -1023,7 +1022,7 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
       Node.prototype._emit.apply(this, arguments);
     }
   };
-  Object.defineProperty(window, 'onload', {
+ /* Object.defineProperty(window, 'onload', {
     get() {
       return window[symbols.disabledEventsSymbol]['load'] !== undefined ? window[symbols.disabledEventsSymbol]['load'] : _elementGetter(window, 'load');
     },
@@ -1053,6 +1052,22 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
           _elementSetter(window, 'error', onerror);
         }
       }
+    },
+  }); */
+  Object.defineProperty(window, 'onload', {
+    get() {
+      return _elementGetter(window, 'load');
+    },
+    set(onload) {
+      _elementSetter(window, 'load', onload);
+    },
+  });
+  Object.defineProperty(window, 'onerror', {
+    get() {
+      return _elementGetter(window, 'error');
+    },
+    set(onerror) {
+      _elementSetter(window, 'error', onerror);
     },
   });
   Object.defineProperty(window, 'onmessage', {
