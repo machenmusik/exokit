@@ -10,6 +10,7 @@ const os = require('os');
 const util = require('util');
 const {URL} = url;
 const {TextEncoder, TextDecoder} = util;
+const {XRRigidTransform} = require('./XR.js');
 const {performance} = require('perf_hooks');
 const {
   workerData: {
@@ -475,7 +476,6 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
   window.innerWidth = defaultCanvasSize[0];
   window.innerHeight = defaultCanvasSize[1];
   window.devicePixelRatio = 1;
-  window.document = null;
   const location = new Location(options.url);
   Object.defineProperty(window, 'location', {
     get() {
@@ -1650,6 +1650,10 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
     };
   };
   window[symbols.mrDisplaysSymbol] = _makeMrDisplays();
+
+  window.document = _parseDocument(options.htmlString, window);
+  window.document.hidden = options.hidden || false;
+  window.document.xrOffset = options.xrOffset ? XRRigidTransform.fromJSON(options.xrOffset) : new XRRigidTransform();
 })(global);
 
 global.require = undefined;
