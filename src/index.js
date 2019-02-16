@@ -149,7 +149,7 @@ const dataPath = (() => {
 })();
 
 const windows = [];
-const contexts = [];
+// const contexts = [];
 
 const _makeSab = size => {
   const sab = new SharedArrayBuffer(size);
