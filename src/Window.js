@@ -50,8 +50,6 @@ const {
   RTCTrackEvent,
 } = require('./RTC/index.js');
 
-const nativeWorker = require('worker-native');
-
 const {LocalStorage} = require('node-localstorage');
 const indexedDB = require('fake-indexeddb');
 const parseXml = require('@rgrove/parse-xml');
@@ -106,6 +104,12 @@ const {
   nativeBrowser,
   nativeWindow,
 } = bindings;
+
+const nativeWorker = require('worker-native');
+
+const eventLoopNative = require('event-loop-native');
+nativeWindow.setEventLoop(eventLoopNative);
+nativeWorker.dlclose(eventLoopNative.getDlibPath());
 
 // GlobalContext.args = {};
 // GlobalContext.version = '';
