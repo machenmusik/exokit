@@ -1438,6 +1438,8 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
         context.flush();
       }
 
+      const vrGlContext = _getVrGlContext();
+      const mlGlContext = _getMlGlContext();
       const isVisible = nativeWindow.isVisible(windowHandle) || vrGlContext === context || mlGlContext === context;
       if (isVisible) {
         // console.log('blit layers', fakePresentState.layers.length);
