@@ -1159,6 +1159,8 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
   const _tickAnimationFrameTop = _tickAnimationFrameRaf(true);
   const _tickAnimationFrameChild = _tickAnimationFrameRaf(false);
   const _tickAnimationFrameWait = async () => {
+    const childWaits = Promise.all(windows.map(window => window.tickAnimationFrame('wait')));
+    
     // perform the wait
     if (fakePresentState.fakeVrDisplay) {
       fakePresentState.fakeVrDisplay.waitGetPoses();
@@ -1443,6 +1445,8 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
     // emit xr events
     window[symbols.mrDisplaysSymbol].xrDisplay.session && window[symbols.mrDisplaysSymbol].xrDisplay.session.update();
     window[symbols.mrDisplaysSymbol].xmDisplay.session && window[symbols.mrDisplaysSymbol].xmDisplay.session.update();
+    
+    await childWaits;
   };
   const _tickAnimationFrameSubmit = () => {
     // composite framebuffers
