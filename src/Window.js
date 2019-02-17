@@ -16,6 +16,8 @@ const {
   workerData: {
     args: {
       options,
+      args,
+      version,
       xrState,
     },
   },
@@ -111,8 +113,8 @@ const eventLoopNative = require('event-loop-native');
 nativeWindow.setEventLoop(eventLoopNative);
 nativeWorker.dlclose(eventLoopNative.getDlibPath());
 
-// GlobalContext.args = {};
-// GlobalContext.version = '';
+GlobalContext.args = args;
+GlobalContext.version = version;
 GlobalContext.xrState = xrState;
 
 const {_parseDocument, _parseDocumentAst, Document, DocumentFragment, DocumentType, DOMImplementation, initDocument} = require('./Document');
