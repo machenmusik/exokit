@@ -245,7 +245,6 @@ const fakePresentState = {
   layers: [],
 };
 GlobalContext.fakePresentState = fakePresentState;
-GlobalContext.fakeVrDisplayEnabled = false;
 
 class CustomElementRegistry {
   constructor(window) {
@@ -549,7 +548,7 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
     webkitGetUserMedia: getUserMedia, // for feature detection
     getVRDisplaysSync() {
       const result = [];
-      if (GlobalContext.fakeVrDisplayEnabled) {
+      if (GlobalContext.xrState.fakeVrDisplayEnabled[0]) {
         result.push(window[symbols.mrDisplaysSymbol].fakeVrDisplay);
       }
       if (nativeMl && nativeMl.IsPresent()) {
@@ -569,7 +568,7 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
       return result;
     },
     createVRDisplay() {
-      GlobalContext.fakeVrDisplayEnabled = true;
+      GlobalContext.xrState.fakeVrDisplayEnabled[0] = 1;
       return window[symbols.mrDisplaysSymbol].fakeVrDisplay;
     },
     getGamepads: getGamepads.bind(null, window),
