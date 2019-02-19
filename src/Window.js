@@ -183,6 +183,7 @@ const _normalizeMatrixArray = float32Array => {
 };
 
 const windows = [];
+GlobalContext.windows = windows;
 const contexts = [];
 GlobalContext.contexts = contexts;
 
