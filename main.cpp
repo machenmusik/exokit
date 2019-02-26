@@ -98,7 +98,7 @@ void pumpStdout(int fd) {
   char buf[STDIO_BUF_SIZE + 1];
   ssize_t i = 0;
   ssize_t lineStart = 0;
-  
+
   for (;;) {
     ssize_t size = read(fd, buf + i, sizeof(buf) - i);
 
@@ -133,7 +133,7 @@ void pumpStderr(int fd) {
   char buf[STDIO_BUF_SIZE + 1];
   ssize_t i = 0;
   ssize_t lineStart = 0;
-  
+
   for (;;) {
     ssize_t size = read(fd, buf + i, sizeof(buf) - i);
 
@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
   }
 
   registerDlibs(node::dlibs);
-  
+
   int stdoutfds[2];
   int stderrfds[2];
   pipe(stdoutfds);
@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
         continue;
       }
     }
-    
+
     for (int i = 0; i < argc; i++) {
       exout << "get arg " << i << ": " << argv[i] << std::endl;
     }
@@ -351,11 +351,11 @@ int main(int argc, char **argv) {
 
     node::Start(argc, argv);
   }
-  
+
   close(1);
   close(2);
   stdoutReaderThread.join();
   stderrReaderThread.join();
-  
+
   return result;
 }
