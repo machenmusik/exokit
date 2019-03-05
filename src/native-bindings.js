@@ -742,7 +742,6 @@ if (bindings.nativeVr) {
         xrState.renderWidth[0] = halfWidth;
         xrState.renderHeight[0] = height;
 
-        const context = GlobalContext.contexts.find(context => context.window === window && context.id === id);
         vrPresentState.glContextId = context.id;
         vrPresentState.msFbo = msFbo;
         vrPresentState.msTex = msTex;
