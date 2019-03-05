@@ -660,7 +660,7 @@ GlobalContext.nativeBrowser = bindings.nativeBrowser;
 
 if (bindings.nativeVr) {
   const cleanups = [];
-  bindings.nativeVr.requestPresent = async function(layers) {
+  bindings.nativeVr.requestPresent = function(layers) {
     const layer = layers.find(layer => layer && layer.source && layer.source.tagName === 'CANVAS');
     if (layer) {
       const canvas = layer.source;
@@ -789,7 +789,7 @@ if (bindings.nativeVr) {
       throw new Error('no HTMLCanvasElement source provided');
     }
   };
-  bindings.nativeVr.exitPresent = async function() {
+  bindings.nativeVr.exitPresent = function() {
     if (vrPresentState.vrContext) {
       bindings.nativeVr.VR_Shutdown();
       
@@ -824,7 +824,7 @@ if (bindings.nativeVr) {
 if (bindings.nativeMl) {
   let canvas = null;
   const cleanups = [];
-  bindings.nativeMl.requestPresent = async function(layers) {
+  bindings.nativeMl.requestPresent = function(layers) {
     const layer = layers.find(layer => layer && layer.source && layer.source.tagName === 'CANVAS');
     if (layer) {
       canvas = layer.source;
@@ -960,7 +960,7 @@ if (bindings.nativeMl) {
       throw new Error('no HTMLCanvasElement source provided');
     }
   };
-  bindings.nativeMl.exitPresent = async function() {
+  bindings.nativeMl.exitPresent = function() {
     const {mlPresentState} = GlobalContext;
       
     if (mlPresentState.mlContext) {
