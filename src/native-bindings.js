@@ -659,11 +659,12 @@ GlobalContext.nativeMl = bindings.nativeMl;
 GlobalContext.nativeBrowser = bindings.nativeBrowser;
 
 if (bindings.nativeVr) {
+  let canvas = null;
   const cleanups = [];
   bindings.nativeVr.requestPresent = function(layers) {
     const layer = layers.find(layer => layer && layer.source && layer.source.tagName === 'CANVAS');
     if (layer) {
-      const canvas = layer.source;
+      canvas = layer.source;
       const {xrState} = GlobalContext;
 
       const presentSpec = (() => {
@@ -816,7 +817,7 @@ if (bindings.nativeVr) {
       nativeWindow.destroyRenderTarget(msFbo, msTex, msDepthStencilTex);
       nativeWindow.destroyRenderTarget(fbo, tex, msDepthTex);
 
-      const context = GlobalContext.contexts.find(contex => contex.id === vrPresentState.glContextId);
+      const context = canvas._context;
       nativeWindow.setCurrentWindowContext(context.getWindowHandle());
       context.setDefaultFramebuffer(0);
 
