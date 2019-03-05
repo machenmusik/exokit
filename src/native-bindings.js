@@ -716,7 +716,7 @@ if (bindings.nativeVr) {
 
         // vrPresentState.lmContext = lmContext;
 
-        context.framebuffer = {
+        canvas.framebuffer = {
           width,
           height,
           msFbo,
@@ -755,7 +755,7 @@ if (bindings.nativeVr) {
           canvas.removeListener('attribute', _attribute);
         });
 
-        return context.framebuffer;
+        return canvas.framebuffer;
       } else if (canvas.ownerDocument.framebuffer) {
         const {width, height} = canvas;
         const {msFbo, msTex, msDepthTex, fbo, tex, depthTex} = canvas.ownerDocument.framebuffer;
@@ -888,7 +888,7 @@ if (bindings.nativeMl) {
         const {mlPresentState} = GlobalContext;
         mlPresentState.mlContext.SetContentTexture(tex);
 
-        context.framebuffer = {
+        canvas.framebuffer = {
           width,
           height,
           msFbo,
@@ -926,7 +926,7 @@ if (bindings.nativeMl) {
 
         context.setDefaultFramebuffer(msFbo);
 
-        return context.framebuffer;
+        return canvas.framebuffer;
       } else if (canvas.ownerDocument.framebuffer) {
         const {width, height} = canvas;
         const {msFbo, msTex, msDepthTex, fbo, tex, depthTex} = canvas.ownerDocument.framebuffer;
