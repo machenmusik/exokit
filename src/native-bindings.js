@@ -684,14 +684,14 @@ if (bindings.nativeVr) {
           const {width: halfWidth, height} = system.GetRecommendedRenderTargetSize();
           const width = halfWidth * 2;
 
-          return Promise.resolve({
+          return {
             wasPresenting: false,
             width,
             height,
-          });
+          };
         } else {
           const {msFbo, msTex, msDepthTex, fbo, tex, depthTex} = vrPresentState;
-          return Promise.resolve({
+          return {
             wasPresenting: true,
             width: xrState.renderWidth[0] * 2,
             height: xrState.renderHeight[0],
@@ -701,7 +701,7 @@ if (bindings.nativeVr) {
             fbo,
             tex,
             depthTex,
-          });
+          };
         }
       })();
 
