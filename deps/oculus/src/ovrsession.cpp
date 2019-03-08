@@ -342,8 +342,8 @@ NAN_METHOD(OVRSession::Submit)
   WebGLRenderingContext *gl = node::ObjectWrap::Unwrap<WebGLRenderingContext>(Local<Object>::Cast(info[0]));
   GLuint textureSource = info[1]->Uint32Value();
   GLuint fboIdSource = info[2]->Uint32Value();
-  int canvasWidth = info[3]->Uint32Value();
-  int canvasHeight = info[4]->Uint32Value();
+  int width = info[3]->Uint32Value();
+  int height = info[4]->Uint32Value();
 
   ovrPosef *eyeRenderPoses = &*ObjectWrap::Unwrap<OVRSession>(info.Holder())->eyeRenderPoses;
   int *frameIndex = &ObjectWrap::Unwrap<OVRSession>(info.Holder())->frameIndex;
@@ -357,7 +357,7 @@ NAN_METHOD(OVRSession::Submit)
   GLuint colorTextureId;
   GLuint depthTextureId;
   ovrTimewarpProjectionDesc posTimewarpProjectionDesc = {};
-  glClearColor(1.0, 0.0, 1.0, 1.0);
+  // glClearColor(1.0, 0.0, 1.0, 1.0);
 
   for (int eye = 0; eye < 2; ++eye) {
 
@@ -372,10 +372,20 @@ NAN_METHOD(OVRSession::Submit)
       ovr_GetTextureSwapChainBufferGL(session, eyes[eye].DepthTextureChain, curIndex, &depthTextureId);
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fboId);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTextureId, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTextureId, 0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fboIdSource);
+    
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboId);
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTextureId, 0);
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTextureId, 0);
 
+    glBlitFramebuffer(eye == 0 ? 0 : width/2, 0,
+      eye == 0 ? width/2 : width, height,
+      0, 0,
+      eyes[eye].textureSize.w, eyes[eye].textureSize.h,
+      GL_COLOR_BUFFER_BIT,
+      GL_LINEAR
+    );
+    
     // glBlitNamedFramebuffer(
     //   fboIdSource,
     //   fboId,
@@ -385,16 +395,22 @@ NAN_METHOD(OVRSession::Submit)
     //   GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
     //   GL_LINEAR);
 
-    glViewport(0, 0, eyes[eye].textureSize.w, eyes[eye].textureSize.h);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // glViewport(0, 0, eyes[eye].textureSize.w, eyes[eye].textureSize.h);
+    // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_FRAMEBUFFER_SRGB);
 
     ovr_CommitTextureSwapChain(session, eyes[eye].ColorTextureChain);
     ovr_CommitTextureSwapChain(session, eyes[eye].DepthTextureChain);
 
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, 0, 0);
+    // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
+    // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, 0, 0);
 
+    if (gl->HasFramebufferBinding(GL_READ_FRAMEBUFFER)) {
+      glBindFramebuffer(GL_READ_FRAMEBUFFER, gl->GetFramebufferBinding(GL_READ_FRAMEBUFFER));
+    }
+    if (gl->HasFramebufferBinding(GL_DRAW_FRAMEBUFFER)) {
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gl->GetFramebufferBinding(GL_DRAW_FRAMEBUFFER));
+    }
     if (gl->HasTextureBinding(gl->activeTexture, GL_TEXTURE_2D)) {
       glBindTexture(GL_TEXTURE_2D, gl->GetTextureBinding(gl->activeTexture, GL_TEXTURE_2D));
     } else {
