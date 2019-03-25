@@ -108,6 +108,17 @@ const {
   nativeWorker,
 } = require('./native-bindings');
 
+const PHASES = (() => {
+  let phase = 0;
+  return {
+    NULL: phase++,
+    WAITED: phase++,
+    PENDING: phase++,
+    DONE: phase++,
+    COMPLETE: phase++,
+  };
+})();
+
 GlobalContext.id = id;
 GlobalContext.args = args;
 GlobalContext.version = version;
@@ -1143,32 +1154,33 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
       }
     };
     const _renderChildren = async () => {
+      const childSyncs = [];
       for (let i = 0; i < windows.length; i++) {
         const window = windows[i];
-        if (!window.promise) {
-          window.syncs = [];
+        if (window.phase === PHASES.WAITED) {
           window.promise = window.tickAnimationFrame('child')
             .then(syncs => {
-              window.syncs = syncs;
+              childSyncs.push.apply(childSyncs, syncs);
             })
             .catch(err => {
               console.warn(err.stack);
             })
             .finally(() => {
+              window.phase = PHASES.DONE;
               window.promise = null;
             });
+          window.phase = PHASES.PENDING;
         }
       }
       const timeoutPromise = new Promise((accept, reject) => {
         setTimeout(() => {
-          accept();
+          accept(false);
         }, 1000/60);
       });
-      await Promise.race([
-        Promise.all(windows.map(window => window.promise)),
+      const ok = await Promise.race([
+        Promise.all(windows.map(window => window.promise)).then(() => true),
         timeoutPromise,
       ]);
-      const childSyncs = windows.map(window => window.syncs || []).flat();
       for (let i = 0; i < GlobalContext.contexts.length; i++) {
         const context = GlobalContext.contexts[i];
         nativeWindow.setCurrentWindowContext(context.getWindowHandle());
@@ -1196,8 +1208,14 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
   const _tickAnimationFrameTop = _tickAnimationFrameRaf('top');
   const _tickAnimationFrameChild = _tickAnimationFrameRaf('child');
   const _tickAnimationFrameWait = async () => {
-    const childWaits = Promise.all(windows.map(window => window.tickAnimationFrame('wait')));
-    
+    for (let i = 0; i < windows.length; i++) {
+      const window = windows[i];
+      if (window.phase === PHASES.NULL) {
+        window.tickAnimationFrame('wait');
+        window.phase = PHASES.WAITED;
+      }
+    }
+
     // perform the wait
     if (fakePresentState.fakeVrDisplay) {
       fakePresentState.fakeVrDisplay.waitGetPoses();
@@ -1482,11 +1500,15 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
     // emit xr events
     window[symbols.mrDisplaysSymbol].xrDisplay.session && window[symbols.mrDisplaysSymbol].xrDisplay.session.update();
     window[symbols.mrDisplaysSymbol].xmDisplay.session && window[symbols.mrDisplaysSymbol].xmDisplay.session.update();
-    
-    await childWaits;
   };
   const _tickAnimationFrameSubmit = async () => {
-    const childSubmits = Promise.all(windows.map(window => window.tickAnimationFrame('submit')));
+    for (let i = 0; i < windows.length; i++) {
+      const window = windows[i];
+      if (window.phase === PHASES.DONE) {
+        window.tickAnimationFrame('submit');
+        window.phase = PHASES.COMPLETE;
+      }
+    }
 
     const vrGlContext = _getVrGlContext();
     const mlGlContext = _getMlGlContext();
@@ -1541,7 +1563,12 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
       }
     }
 
-    await childSubmits;
+    for (let i = 0; i < windows.length; i++) {
+      const window = windows[i];
+      if (window.phase === PHASES.COMPLETE) {
+        window.phase = PHASES.NULL;
+      }
+    }
   };
   window.tickAnimationFrame = type => {
     switch (type) {
