@@ -1161,7 +1161,7 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
       for (let i = 0; i < windows.length; i++) {
         const window = windows[i];
         if (window.phase === PHASES.WAITED) {
-          window.promise = window.tickAnimationFrame('child')
+          window.promise = window.tickAnimationFrame('rafChild')
             .then(syncs => {
               window.syncs = syncs;
               window.promise = null;
@@ -1502,11 +1502,11 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
     window[symbols.mrDisplaysSymbol].xrDisplay.session && window[symbols.mrDisplaysSymbol].xrDisplay.session.update();
     window[symbols.mrDisplaysSymbol].xmDisplay.session && window[symbols.mrDisplaysSymbol].xmDisplay.session.update();
   };
-  const _tickAnimationFrameSubmit = async () => {
+  const _tickAnimationFrameSubmit = type => async () => {
     for (let i = 0; i < windows.length; i++) {
       const window = windows[i];
       if (window.phase === PHASES.DONE) {
-        window.tickAnimationFrame('submit');
+        window.tickAnimationFrame('submitChild');
         window.phase = PHASES.COMPLETE;
       }
     }
@@ -1550,7 +1550,9 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
         }
       }
 
-      nativeWindow.swapBuffers(windowHandle);
+      if (type === 'top') {
+        nativeWindow.swapBuffers(windowHandle);
+      }
       if (isMac) {
         const drawFramebuffer = context.getFramebuffer(context.DRAW_FRAMEBUFFER);
         if (drawFramebuffer) {
@@ -1571,12 +1573,15 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
       }
     }
   };
+  const _tickAnimationFrameSubmitTop = _tickAnimationFrameSubmit('top');
+  const _tickAnimationFrameSubmitChild = _tickAnimationFrameSubmit('child');
   window.tickAnimationFrame = type => {
     switch (type) {
       case 'wait': return _tickAnimationFrameWait();
-      case 'top': return _tickAnimationFrameTop();
-      case 'child': return _tickAnimationFrameChild();
-      case 'submit': return _tickAnimationFrameSubmit();
+      case 'rafTop': return _tickAnimationFrameTop();
+      case 'rafChild': return _tickAnimationFrameChild();
+      case 'submitTop': return _tickAnimationFrameSubmitTop();
+      case 'submitChild': return _tickAnimationFrameSubmitChild();
       default: throw new Error(`unknown tick animation frame mode: ${type}`);
     }
   };
