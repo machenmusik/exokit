@@ -597,7 +597,6 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
     return id;
   })(setTimeout);
   window.clearTimeout = (clearTimeout => id => {
-    id--;
     const fn = timeouts[id];
     if (fn) {
       clearTimeout(fn[symbols.timeoutSymbol]);
@@ -616,7 +615,6 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
     return id;
   })(setInterval);
   window.clearInterval = (clearInterval => id => {
-    id--;
     const fn = intervals[id];
     if (fn) {
       clearInterval(fn[symbols.timeoutSymbol]);
