@@ -236,6 +236,8 @@ const _startTopRenderLoop = () => {
   };
   const TIMESTAMP_FRAMES = 100;
 
+  nativeBindings.nativeWindow.registerPollEvents && nativeBindings.nativeWindow.registerPollEvents();
+
   const _topRenderLoop = async () => {
     if (args.performance) {
       if (timestamps.frames >= TIMESTAMP_FRAMES) {
@@ -279,7 +281,6 @@ const _startTopRenderLoop = () => {
     }
 
     // update media frames
-    nativeBindings.nativeWindow.pollEvents && nativeBindings.nativeWindow.pollEvents();
     nativeBindings.nativeVideo.Video.updateAll();
     nativeBindings.nativeBrowser.Browser.updateAll();
 
