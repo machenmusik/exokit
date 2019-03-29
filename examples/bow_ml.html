@@ -5,28 +5,13 @@
    <meta name="viewport" content="width=device-width, initial-scale=1">
    <meta name="theme-color" content="#008000"/>
    <title>bow_ml</title>
-   <link rel="manifest" href="bow_ml_manifest.json">
-   <script>
-    if('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/bow_ml_sw.js')
-        .then(function() {
-              console.log('Service Worker Registered');
-        });
-    }
-   </script>
-    <style>
-      body {
-        margin: 0;
-      }
-    </style>
-  </head>
   <body>
   <h1>bow_ml</h1>
   <script src="three.js"></script>
   <script src="sprite3d.js"></script>
   <script>
 (async () => {
-    let container, scene, camera, display, controllerMeshes, bowMesh, stringMesh, pinchMeshes;
+    let container, scene, camera, display, bowMesh, stringMesh, pinchMeshes, bowImg, arrowImg;
     let handTracker;
 
     /* const localTransformPositionVectors = {
@@ -79,24 +64,8 @@
     const upVector = new THREE.Vector3(0, 1, 0);
     const zeroQuaternion = new THREE.Quaternion();
     const forwardQuaternion = new THREE.Quaternion().setFromUnitVectors(upVector, forwardVector);
+    const localLine = new THREE.Line3();
 
-    const controllerGeometry = new THREE.CylinderBufferGeometry(0.001, 0.001, 1, 32, 1)
-      .applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2))
-      .applyMatrix(new THREE.Matrix4().makeTranslation(0, 0, -0.5));
-    const controllerMaterial = new THREE.MeshPhongMaterial({
-      color: 0x4caf50,
-    });
-    const _makeControllerMesh = (x = 0, y = 0, z = 0, qx = 0, qy = 0, qz = 0, qw = 1) => {
-      const mesh = new THREE.Mesh(controllerGeometry, controllerMaterial);
-      mesh.position.set(x, y, z);
-      mesh.quaternion.set(qx, qy, qz, qw);
-      // mesh.matrix.compose(mesh.position, mesh.quaternion, mesh.scale);
-      mesh.updateMatrix();
-      mesh.updateMatrixWorld();
-      mesh.matrixAutoUpdate = false;
-      mesh.frustumCulled = false;
-      return mesh;
-    };
     const _getControllerIndex = inputSource => inputSource.handedness === 'left' ? 0 : 1;
 
     const _requestImage = url => new Promise((accept, reject) => {
@@ -111,15 +80,7 @@
 
       img.crossOrigin = 'Anonymous';
       img.src = url;
-    });  const localLine = new THREE.Line3();
-
-    const [
-      bowImg,
-      arrowImg,
-    ] = await Promise.all([
-      _requestImage('icons/Bow_Empty.png'),
-      _requestImage('icons/Arrow.png'),
-    ]);
+    });
 
     // const NPC_PLUGIN = 'npc';
     /* const OTHER_SIDES = {
@@ -149,9 +110,12 @@
       const scale = new THREE.Vector3(1, 1, 1);
       return new THREE.Matrix4().compose(position, rotation, scale);
     })();
-    const arrowTemplateMesh = sprite3d.makeSpriteMesh(arrowImg)
-    arrowTemplateMesh.geometry.applyMatrix(arrowMatrix);
+    let arrowTemplateMesh = null;
     const _makeArrowMesh = () => {
+      if (!arrowTemplateMesh) {
+        arrowTemplateMesh = sprite3d.makeSpriteMesh(arrowImg);
+        arrowTemplateMesh.geometry.applyMatrix(arrowMatrix);
+      }
       const arrowMesh = arrowTemplateMesh.clone();
       arrowMesh.frustumCulled = false;
       arrowMesh.startTime = 0;
@@ -296,7 +260,7 @@
       return _go;
     };
 
-    async function init() {
+    function init() {
       container = document.createElement('div');
       document.body.appendChild(container);
 
@@ -316,14 +280,6 @@
       directionalLight.position.set(1, 1, 1);
       scene.add(directionalLight);
 
-      controllerMeshes = [
-        _makeControllerMesh(-0.1),
-        _makeControllerMesh(0.1),
-      ];
-      controllerMeshes.forEach(controllerMesh => {
-        scene.add(controllerMesh);
-      });
-
       renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true,
@@ -336,7 +292,16 @@
 
       container.appendChild(renderer.domElement);
 
-      {
+      Promise.all([
+        _requestImage('icons/Bow_Empty.png'),
+        _requestImage('icons/Arrow.png'),
+      ]).then(([
+        newBowImg,
+        newArrowImg,
+      ]) => {
+        bowImg = newBowImg;
+        arrowImg = newArrowImg;
+
         bowMesh = sprite3d.makeSpriteMesh(bowImg);
         bowMesh.geometry
           .applyMatrix(new THREE.Matrix4().makeRotationFromQuaternion(
@@ -380,101 +345,6 @@
           return stringMesh;
         })();
         scene.add(stringMesh);
-
-        /* const _grab = e => {
-          grabbable.setLocalTransform(localTransformPositionVectors[pose.getVrMode()], localTransformRotationQuaterions[pose.getVrMode()], localTransformScaleVector);
-          stringMesh.visible = true;
-        };
-        grabbable.on('grab', _grab);
-        const _release = e => {
-          grabbable.setLocalTransform(zeroVector, zeroQuaternion, oneVector);
-          stringMesh.visible = false;
-        };
-        grabbable.on('release', _release);
-
-        const _gripdown = e => {
-          const {side} = e;
-          const otherSide = OTHER_SIDES[side];
-
-          if (grabbable.isGrabbed() && grabbable.getGrabberSide() === otherSide) {
-            const {gamepads} = pose.getStatus();
-            const gamepad = gamepads[side];
-            const {worldPosition: controllerPosition} = gamepad;
-            stringMesh.getWorldPosition(localVector);
-
-            if (controllerPosition.distanceTo(localVector) < 0.1) {
-              pulling = true;
-            } else {
-              drawnArrowMesh = _makeArrowMesh();
-              scene.add(drawnArrowMesh);
-
-              // input.vibrate(side, 1, 20);
-            }
-
-            e.stopImmediatePropagation();
-          }
-        };
-        input.on('gripdown', _gripdown, {
-          priority: 1,
-        });
-        const _gripup = e => {
-          const {side} = e;
-          const otherSide = OTHER_SIDES[side];
-
-          if (pulling && grabbable.getGrabberSide() === otherSide) {
-            pulling = false;
-
-            if (nockedArrowMesh) {
-              const arrow = nockedArrowMesh;
-              arrows.push(arrow);
-
-              const now = Date.now();
-              arrow.startTime = now;
-              arrow.lastTime = now;
-              arrow.velocity.set(0, 0, -ARROW_SPEED * nockedArrowMesh.distanceTo(stringMesh.position))
-                .applyQuaternion(arrow.quaternion);
-
-              nockedArrowMesh = null;
-            }
-          }
-          if (drawnArrowMesh) {
-            scene.remove(drawnArrowMesh);
-            drawnArrowMesh = null;
-          }
-        };
-        input.on('gripup', _gripup, {
-          priority: 1,
-        });
-        const _triggerdown = e => {
-          const {side} = e;
-
-          if (pose.getVrMode() === 'keyboard' && !nockedArrowMesh) {
-            nockedArrowMesh = _makeArrowMesh();
-            scene.add(nockedArrowMesh);
-          }
-        };
-        input.on('triggerdown', _triggerdown, {
-          priority: 1,
-        });
-        const _triggerup = e => {
-          const {side} = e;
-
-          if (pose.getVrMode() === 'keyboard' && nockedArrowMesh) {
-            const arrow = nockedArrowMesh;
-            arrows.push(arrow);
-
-            const now = Date.now();
-            arrow.startTime = now;
-            arrow.lastTime = now;
-            arrow.velocity.set(0, 0, -ARROW_SPEED * 0.3)
-              .applyQuaternion(arrow.quaternion);
-
-            nockedArrowMesh = null;
-          }
-        };
-        input.on('triggerup', _triggerup, {
-          priority: 1,
-        }); */
 
         const _makePinchMesh = () => {
           const geometry = new THREE.BoxBufferGeometry(0.01, 0.01, 0.01);
@@ -564,12 +434,10 @@
           lastPincheds[handIndex] = pinched;
         };
 
-        handTracker = window.browser.magicleap.RequestHandTracking();
-        handTracker.onhands = _onHands;
-        handTracker.ongesture = _onGesture;
-      }
-
-      renderer.setAnimationLoop(animate);
+        // handTracker = window.browser.magicleap.RequestHandTracking();
+        // handTracker.onhands = _onHands;
+        // handTracker.ongesture = _onGesture;
+      });
     }
 
     let lastPulling = false;
@@ -578,24 +446,6 @@
         const gamepads = navigator.getGamepads();
         const inputSources = display.session.getInputSources();
 
-        const _updateControllerMeshes = () => {
-          for (let i = 0; i < controllerMeshes.length; i++) {
-            controllerMeshes[i].visible = false;
-          }
-
-          const inputSources = display.session.getInputSources();
-          for (let i = 0; i < inputSources.length; i++) {
-            const inputSource = inputSources[i];
-            const pose = frame.getInputPose(inputSource);
-
-            const controllerIndex = _getControllerIndex(inputSource);
-            const controllerMesh = controllerMeshes[controllerIndex];
-            controllerMesh.matrix.fromArray(pose.targetRay.transformMatrix);
-            controllerMesh.matrix.decompose(controllerMesh.position, controllerMesh.quaternion, controllerMesh.scale);
-            // controllerMesh.updateMatrixWorld(true);
-            controllerMesh.visible = true;
-          }
-        };
         const _updateGamepads = () => {
           for (let i = 0; i < gamepads.length; i++) {
             const gamepad = gamepads[i];
@@ -819,7 +669,6 @@
           }
         };
 
-        _updateControllerMeshes();
         _updateGamepads();
         _updateGrab();
         _updatePinch();
@@ -833,7 +682,7 @@
       renderer.render(scene, renderer.vr.enabled ? renderer.vr.getCamera(camera) : camera);
     }
 
-    await init();
+    init();
 
     console.log('request device');
     display = await navigator.xr.requestDevice();
@@ -873,7 +722,7 @@
       console.log('running!');
     });
 
-    renderer.setAnimationLoop(animate);
+    // renderer.setAnimationLoop(animate);
 })()
   .catch(err => {
     console.warn(err.stack);

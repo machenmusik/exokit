@@ -146,7 +146,7 @@ public:
   bool Update();
 
 // protected:
-  Nan::Persistent<Object> windowObj;
+  MLMat4f *transformMatrix;
   MLHandle requestHandle;
   uv_loop_t *loop;
   Nan::Persistent<Function> cb;
@@ -193,7 +193,7 @@ public:
   void Update();
 
 // protected:
-  Nan::Persistent<Object> windowObj;
+  MLMat4f *transformMatrix;
   uv_loop_t *loop;
   Nan::Persistent<Function> cb;
 };
@@ -213,7 +213,7 @@ public:
   void Update();
 
 // protected:
-  Nan::Persistent<Object> windowObj;
+  MLMat4f *transformMatrix;
   uv_loop_t *loop;
   Nan::Persistent<Function> cb;
 };
@@ -235,7 +235,7 @@ public:
   void Update();
 
 // protected:
-  Nan::Persistent<Object> windowObj;
+  MLMat4f *transformMatrix;
   Nan::Persistent<Function> cb;
   uv_loop_t *loop;
   Nan::Persistent<Function> ongesture;
@@ -256,7 +256,7 @@ public:
   void Update(MLSnapshot *snapshot);
 
 // protected:
-  Nan::Persistent<Object> windowObj;
+  MLMat4f *transformMatrix;
   MLTransform transform;
   MLTransform leftTransform;
   bool leftBlink;
@@ -293,7 +293,7 @@ public:
   void Update(MLSnapshot *snapshot);
 
 // protected:
-  Nan::Persistent<Object> windowObj;
+  MLMat4f *transformMatrix;
   MLHandle trackerHandle;
   float size;
   uv_loop_t *loop;

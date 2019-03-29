@@ -602,7 +602,7 @@ void ComposeLayer(ComposeSpec *composeSpec, PlaneSpec *planeSpec, const LayerSpe
   if (layer.type == LayerType::IFRAME_3D || layer.type == LayerType::IFRAME_3D_REPROJECT || layer.type == LayerType::RAW_CANVAS) {
     glBindVertexArray(composeSpec->composeVao);
     glUseProgram(composeSpec->composeProgram);
-    
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, layer.tex);
     glUniform1i(composeSpec->texLocation, 0);
@@ -616,7 +616,7 @@ void ComposeLayer(ComposeSpec *composeSpec, PlaneSpec *planeSpec, const LayerSpe
   } else {
     glBindVertexArray(planeSpec->planeVao);
     glUseProgram(planeSpec->planeProgram);
-    
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, layer.tex);
     glUniform1i(planeSpec->texLocation, 0);
@@ -719,6 +719,7 @@ NAN_METHOD(ComposeLayers) {
               if (TO_UINT32(contentWindowObj->Get(JS_STR("phase"))) == 4) { // PHASES.COMPLETE
                 layerType = LayerType::IFRAME_3D;
               } else {
+                std::cout << "reproject " << i << std::endl;
                 layerType = LayerType::IFRAME_3D_REPROJECT;
               }
             } else {

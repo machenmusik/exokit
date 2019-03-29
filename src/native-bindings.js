@@ -653,6 +653,7 @@ if (bindings.nativeVr) {
         nativeWindow.setCurrentWindowContext(windowHandle);
 
         const [fbo, tex, depthTex, msFbo, msTex, msDepthTex] = nativeWindow.createRenderTarget(context, width, height);
+        const [fbo2, tex2, depthTex2, msFbo2, msTex2, msDepthTex2] = nativeWindow.createRenderTarget(context, width, height);
 
         const {vrPresentState} = GlobalContext;
         // vrPresentState.lmContext = lmContext;
@@ -677,9 +678,9 @@ if (bindings.nativeVr) {
         vrPresentState.msFbo = msFbo;
         vrPresentState.msTex = msTex;
         vrPresentState.msDepthTex = msDepthTex;
-        vrPresentState.fbo = fbo;
-        vrPresentState.tex = tex;
-        vrPresentState.depthTex = depthTex;
+        vrPresentState.fbo = fbo2;
+        vrPresentState.tex = tex2;
+        vrPresentState.depthTex = depthTex2;
         
         context.setDefaultFramebuffer(msFbo);
 
@@ -688,6 +689,7 @@ if (bindings.nativeVr) {
             nativeWindow.setCurrentWindowContext(windowHandle);
 
             nativeWindow.resizeRenderTarget(context, canvas.width, canvas.height, fbo, tex, depthTex, msFbo, msTex, msDepthTex);
+            nativeWindow.resizeRenderTarget(context, canvas.width, canvas.height, fbo2, tex2, depthTex2, msFbo2, msTex2, msDepthTex2);
           }
         };
         canvas.on('attribute', _attribute);
@@ -695,7 +697,16 @@ if (bindings.nativeVr) {
           canvas.removeListener('attribute', _attribute);
         });
 
-        return canvas.framebuffer;
+        return {
+          width,
+          height,
+          msFbo,
+          msTex,
+          msDepthTex,
+          fbo: fbo2,
+          tex: tex2,
+          depthTex: depthTex2,
+        };
       } else if (canvas.ownerDocument.framebuffer) {
         const {width, height} = canvas;
         const {msFbo, msTex, msDepthTex, fbo, tex, depthTex} = canvas.ownerDocument.framebuffer;
@@ -829,9 +840,9 @@ if (bindings.nativeMl) {
         mlPresentState.mlFbo = fbo2;
         mlPresentState.mlTex = tex2;
         mlPresentState.mlDepthTex = depthTex2;
-        mlPresentState.mlMsFbo = msFbo2;
-        mlPresentState.mlMsTex = msTex2;
-        mlPresentState.mlMsDepthTex = msDepthTex2;
+        mlPresentState.mlMsFbo = msFbo;
+        mlPresentState.mlMsTex = msTex;
+        mlPresentState.mlMsDepthTex = msDepthTex;
 
         const _attribute = (name, value) => {
           if (name === 'width' || name === 'height') {
@@ -851,9 +862,9 @@ if (bindings.nativeMl) {
         return {
           width,
           height,
-          msFbo: msFbo2,
-          msTex: msTex2,
-          msDepthTex: msDepthTex2,
+          msFbo,
+          msTex,
+          msDepthTex,
           fbo: fbo2,
           tex: tex2,
           depthTex: depthTex2,

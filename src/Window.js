@@ -835,11 +835,11 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
     ws,
     createRenderTarget: nativeWindow.createRenderTarget, // XXX needed for reality tabs fakeDisplay
     magicleap: nativeMl ? {
-      RequestMeshing: () => nativeMl.RequestMeshing(window),
-      RequestPlaneTracking: () => nativeMl.RequestPlaneTracking(window),
-      RequestHandTracking: () => nativeMl.RequestHandTracking(window),
-      RequestEyeTracking: () => nativeMl.RequestEyeTracking(window),
-      RequestImageTracking: (img, size) => nativeMl.RequestImageTracking(window, img, size),
+      RequestMeshing: () => nativeMl.RequestMeshing(nativeMl, window),
+      RequestPlaneTracking: () => nativeMl.RequestPlaneTracking(nativeMl, window),
+      RequestHandTracking: () => nativeMl.RequestHandTracking(nativeMl, window),
+      RequestEyeTracking: () => nativeMl.RequestEyeTracking(nativeMl, window),
+      RequestImageTracking: (img, size) => nativeMl.RequestImageTracking(nativeMl, window, img, size),
       RequestDepthPopulation: nativeMl.RequestDepthPopulation,
       RequestCamera: nativeMl.RequestCamera,
     } : null,
