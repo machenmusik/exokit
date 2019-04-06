@@ -8,6 +8,7 @@
 // Include the Oculus SDK
 #include "ovrsession.h"
 #include <v8.h>
+#include <iostream>
 
 using namespace v8;
 
@@ -30,6 +31,11 @@ NAN_METHOD(Oculus_Init)
   info.GetReturnValue().Set(sessionResult);
 }
 
+
+void LogCallback(uintptr_t userData, int level, const char *message) {
+  // nothing; we're just checking for HMD
+}
+
 NAN_METHOD(Oculus_IsHmdPresent)
 {
   bool returnValue = false;
@@ -41,7 +47,7 @@ NAN_METHOD(Oculus_IsHmdPresent)
     // Just query if headset present.
     ovrInitParams initParams = {
       ovrInit_RequestVersion | ovrInit_Invisible,
-      OVR_MINOR_VERSION, NULL, 0, 0
+      OVR_MINOR_VERSION, LogCallback, 0, 0
     };
 
     ovr_Initialize(&initParams);
