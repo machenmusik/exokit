@@ -1871,7 +1871,7 @@ function animate(time, frame) {
   const startTimeDiff = now - startTime;
 
   const gamepads = navigator.getGamepads();
-  for (let i = 0; i < gamepads.length; i++) {
+  for (let i = 0; i < gamepads.length && i < 2; i++) {
     const gamepad = gamepads[i];
     const moveTab = moves[i];
     const boxMesh = boxMeshes[i];
@@ -1920,15 +1920,17 @@ function animate(time, frame) {
         controllerMeshes[i].visible = false;
       }
 
-      for (let i = 0; i < gamepads.length; i++) {
+      for (let i = 0; i < gamepads.length && i < 2; i++) {
         const gamepad = gamepads[i];
-
-        const controllerIndex = _getControllerIndex(gamepad);
-        const controllerMesh = controllerMeshes[controllerIndex];
-        controllerMesh.position.fromArray(gamepad.pose.position);
-        controllerMesh.quaternion.fromArray(gamepad.pose.orientation);
-        controllerMesh.updateMatrixWorld(true);
-        controllerMesh.visible = true;
+        
+        if (gamepad.connected) {
+          const controllerIndex = _getControllerIndex(gamepad);
+          const controllerMesh = controllerMeshes[controllerIndex];
+          controllerMesh.position.fromArray(gamepad.pose.position);
+          controllerMesh.quaternion.fromArray(gamepad.pose.orientation);
+          controllerMesh.updateMatrixWorld(true);
+          controllerMesh.visible = true;
+        }
       }
     }
   };
@@ -2516,7 +2518,7 @@ function animate(time, frame) {
 
   const _updateButtons = () => {
     if (display) {
-      for (let i = 0; i < gamepads.length; i++) {
+      for (let i = 0; i < gamepads.length && i < 2; i++) {
         const gamepad = gamepads[i];
 
         {
