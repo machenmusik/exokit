@@ -269,6 +269,7 @@ const xrState = (() => {
   result.vrRequest = _makeTypedArray(Uint32Array, 4); // method, id, width, height
   result.tex = _makeTypedArray(Uint32Array, 1);
   result.depthTex = _makeTypedArray(Uint32Array, 1);
+  result.hidden = _makeTypedArray(Uint32Array, 1);
   result.fakeVrDisplayEnabled = _makeTypedArray(Uint32Array, 1);
   
   return result;
