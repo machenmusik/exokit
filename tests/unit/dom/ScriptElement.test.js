@@ -23,7 +23,6 @@ describe('ScriptElement', () => {
 
   afterEach(async () => {
     await window.destroy();
-    await exokit.exit();
   });
 
   describe('<script>', () => {

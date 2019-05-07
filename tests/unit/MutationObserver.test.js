@@ -41,7 +41,6 @@ describe('MutationObserver', () => {
 
   afterEach(async () => {
     await window.destroy();
-    await exokit.exit();
   });
 
   describe('attributes', () => {

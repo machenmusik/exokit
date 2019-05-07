@@ -291,16 +291,6 @@ const topVrPresentState = {
 
 let loop;
 
-core.exit = () => {
-  /*
-  if (_renderLoop != null) {
-    _renderLoop.stop();
-    _renderLoop = null;
-  }
-  */
-  //process.exit();
-}
-
 const _startTopRenderLoop = () => {
   const timestamps = {
     frames: 0,

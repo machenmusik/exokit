@@ -16,7 +16,6 @@ describe('setTimeout', () => {
 
   afterEach(async () => {
     await window.destroy();
-    await exokit.exit();
   });
 
   it('timeout 0', async () => {

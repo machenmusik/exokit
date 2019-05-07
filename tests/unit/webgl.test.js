@@ -23,7 +23,6 @@ helpers.describeSkipCI('webgl', () => {
 
   afterEach(async () => {
     await window.destroy();
-    await exokit.exit();
   });
 
   describe('getExtension', () => {

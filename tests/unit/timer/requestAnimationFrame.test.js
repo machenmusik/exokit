@@ -18,7 +18,6 @@ describe('requestAnimationFrame', () => {
 
   afterEach(async () => {
     await window.destroy();
-    await exokit.exit();
   });
 
   it('raf', async () => {

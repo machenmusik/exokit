@@ -23,7 +23,6 @@ helpers.describeSkipCI('audio', () => {
 
   afterEach(async () => {
     await window.destroy();
-    await exokit.exit();
   });
 
   it('creates audio context', async () => {
