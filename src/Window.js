@@ -246,11 +246,6 @@ const mlPresentState = {
 };
 GlobalContext.mlPresentState = mlPresentState;
 
-const fakePresentState = {
-  fakeVrDisplay: null,
-};
-GlobalContext.fakePresentState = fakePresentState;
-
 /* const _getVrGlContext = () => contexts.find(context => context.contextId === vrPresentState.glContextId);
 const _getOculusVrGlContext = () => vrPresentState.oculusSystem ? contexts.find(context => context.contextId === vrPresentState.glContextId) : undefined;
 const _getOpenVrGlContext = () => vrPresentState.system ? contexts.find(context => context.contextId === vrPresentState.glContextId) : undefined;
@@ -481,6 +476,10 @@ class Worker {
     this.worker.postMessage(message, transferList);
   }
 
+  terminate() {
+    this.worker.destroy();
+  }
+
   get onmessage() {
     return this.worker.onmessage;
   }
@@ -628,8 +627,14 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
         return [];
       }
     },
-    createVRDisplay() {
+    createVRDisplay(width, height) {
       xrState.fakeVrDisplayEnabled[0] = 1;
+      if (width !== undefined) {
+        xrState.renderWidth[0] = width;
+      }
+      if (height !== undefined) {
+        xrState.renderHeight[0] = height;
+      }
       return window[symbols.mrDisplaysSymbol].fakeVrDisplay;
     },
     getGamepads: getGamepads.bind(null, window),
@@ -1095,7 +1100,7 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
   };
   window.requestAnimationFrame = _makeRequestAnimationFrame(window);
   window.cancelAnimationFrame = id => {
-    const index = rafCbs.findIndex(r => r[symbols.idSymbol] === id);
+    const index = rafCbs.findIndex(r => r && r[symbols.idSymbol] === id);
     if (index !== -1) {
       rafCbs.splice(index, 1);
     } else {
@@ -1202,8 +1207,39 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
   };
   window.tickAnimationFrame = async () => {
     const _emitXrEvents = () => {
-      fakePresentState.fakeVrDisplay && fakePresentState.fakeVrDisplay.update();
-      window[symbols.mrDisplaysSymbol].vrDevice.session && window[symbols.mrDisplaysSymbol].vrDevice.session.update();
+      if (vrPresentState.hmdType === 'fake') {
+        window[symbols.mrDisplaysSymbol].fakeVrDisplay.update();
+      }
+      if (window[symbols.mrDisplaysSymbol].vrDevice.session) {
+        window[symbols.mrDisplaysSymbol].vrDevice.session.update();
+      }
+    };
+    const _decorateSelfLayers = layers => {
+      for (let i = 0; i < layers.length; i++) {
+        const layer = layers[i];
+
+        if (layer._context === vrPresentState.glContext && (!layer.framebuffer || layer.framebuffer.msFbo !== vrPresentState.msFbo)) {
+          const width = xrState.renderWidth[0]*2;
+          const height = xrState.renderHeight[0];
+          let [fbo, tex, depthTex, msFbo, msTex, msDepthTex] = nativeWindow.createRenderTarget(layer._context, width, height);
+
+          msFbo = vrPresentState.msFbo;
+          msTex = vrPresentState.msTex;
+          msDepthTex = vrPresentState.msDepthTex;
+
+          layer.framebuffer = {
+            width,
+            height,
+            msFbo,
+            msTex,
+            msDepthTex,
+            fbo,
+            tex,
+            depthTex,
+          };
+          console.log('make new framebuffer', width, height);
+        }
+      }
     };
     const _composeLayers = () => {
       for (let i = 0; i < contexts.length; i++) {
@@ -1221,29 +1257,7 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
             nativeWindow.bindVrChildFbo(context, vrPresentState.fbo, xrState.tex[0], xrState.depthTex[0]);
 
             if (vrPresentState.layers.length > 0) {
-              for (let i = 0; i < vrPresentState.layers.length; i++) {
-                const layer = vrPresentState.layers[i];
-
-                if (layer instanceof window.HTMLCanvasElement && !layer.framebuffer) {
-                  let [fbo, tex, depthTex, msFbo, msTex, msDepthTex] = nativeWindow.createRenderTarget(context, layer.width, layer.height);
-
-                  // XXX do not construct pointless msFbo
-                  if (layer._context === context) {
-                    msFbo = vrPresentState.msFbo;
-                    msTex = vrPresentState.msTex;
-                    msDepthTex = vrPresentState.msDepthTex;
-                  }
-
-                  layer.framebuffer = {
-                    msFbo,
-                    msTex,
-                    msDepthTex,
-                    fbo,
-                    tex,
-                    depthTex,
-                  };
-                }
-              }
+              _decorateSelfLayers(vrPresentState.layers);
 
               nativeWindow.composeLayers(context, vrPresentState.fbo, vrPresentState.layers, xrState);
             } else {
@@ -1359,18 +1373,14 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
   const _makeMrDisplays = () => {
     const _onrequestpresent = async () => {
       if (!xrState.isPresenting[0]) {
-        await new Promise((accept, reject) => {
+        const {hmdType} = await new Promise((accept, reject) => {
           vrPresentState.responseAccept = accept;
 
           xrState.vrRequest[1] = GlobalContext.id;
-          xrState.vrRequest[2] = window.innerWidth;
-          xrState.vrRequest[3] = window.innerHeight;
           xrState.vrRequest[0] = 1; // requestPresent
         });
 
-        fakePresentState.fakeVrDisplay = fakeVrDisplay; // XX make this returned from the api
-        
-        vrPresentState.hmdType = 'fake';
+        vrPresentState.hmdType = hmdType;
       }
     };
     const _onmakeswapchain = context => {
@@ -1419,14 +1429,24 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
       }
     };
     const _onexitpresent = async () => {
-      // XXX call upwards
-      fakePresentState.fakeVrDisplay = null;
+      if (xrState.isPresenting[0]) {
+        await new Promise((accept, reject) => {
+          vrPresentState.responseAccept = accept;
+
+          xrState.vrRequest[1] = GlobalContext.id;
+          xrState.vrRequest[0] = 2; // exitPresent
+        });
+
+        vrPresentState.hmdType = null;
+      }
     };
 
     const fakeVrDisplay = new FakeVRDisplay(window);
     fakeVrDisplay.onrequestpresent = _onrequestpresent;
     fakeVrDisplay.onmakeswapchain = _onmakeswapchain;
     fakeVrDisplay.onexitpresent = _onexitpresent;
+    fakeVrDisplay.onrequestanimationframe = _makeRequestAnimationFrame(window);
+    fakeVrDisplay.oncancelanimationframe = window.cancelAnimationFrame;
     fakeVrDisplay.onlayers = layers => {
       vrPresentState.layers = layers;
     };
@@ -1473,6 +1493,14 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
     };
   };
   window[symbols.mrDisplaysSymbol] = _makeMrDisplays();
+  window.vrdisplayactivate = () => {
+    const displays = window.navigator.getVRDisplaysSync();
+    if (displays.length > 0 && (!window[symbols.optionsSymbol].args || ['all', 'webvr'].includes(window[symbols.optionsSymbol].args.xr)) && !displays[0].isPresenting) {
+      const e = new window.Event('vrdisplayactivate');
+      e.display = displays[0];
+      window.dispatchEvent(e);
+    }
+  };
 
   window.document = _parseDocument(options.htmlString, window);
   window.document.hidden = options.hidden || false;

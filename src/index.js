@@ -196,7 +196,9 @@ const xrState = (() => {
   const result = {};
   result.isPresenting = _makeTypedArray(Uint32Array, 1);
   result.renderWidth = _makeTypedArray(Float32Array, 1);
+  result.renderWidth[0] = 1920/2;
   result.renderHeight = _makeTypedArray(Float32Array, 1);
+  result.renderHeight[0] = 1080;
   result.metrics = _makeTypedArray(Uint32Array, 2);
   result.devicePixelRatio = _makeTypedArray(Uint32Array, 1);
   result.depthNear = _makeTypedArray(Float32Array, 1);
@@ -266,7 +268,7 @@ const xrState = (() => {
     return result;
   })();
   result.id = _makeTypedArray(Uint32Array, 1);
-  result.vrRequest = _makeTypedArray(Uint32Array, 4); // method, id, width, height
+  result.vrRequest = _makeTypedArray(Uint32Array, 2);
   result.tex = _makeTypedArray(Uint32Array, 1);
   result.depthTex = _makeTypedArray(Uint32Array, 1);
   result.fakeVrDisplayEnabled = _makeTypedArray(Uint32Array, 1);
@@ -333,16 +335,15 @@ const _startTopRenderLoop = () => {
       nativeBindings.nativeWindow.setCurrentWindowContext(topVrPresentState.windowHandle);
       
       if (hmdType === 'fake') {
-        const width = xrState.vrRequest[2];
-        const height = xrState.vrRequest[3];
-        const halfWidth = width/2;
+        const width = xrState.renderWidth[0]*2;
+        const height = xrState.renderHeight[0];
 
         const [fbo, tex, depthTex] = nativeBindings.nativeWindow.createVrTopRenderTarget(width, height);
 
         xrState.tex[0] = tex;
         xrState.depthTex[0] = depthTex;
-        xrState.renderWidth[0] = halfWidth;
-        xrState.renderHeight[0] = height;
+        // xrState.renderWidth[0] = halfWidth;
+        // xrState.renderHeight[0] = height;
       } else if (hmdType === 'oculus') {
         const system = topVrPresentState.oculusSystem || nativeBindings.nativeOculusVR.Oculus_Init();
         // const lmContext = topVrPresentState.lmContext || (nativeBindings.nativeLm && new nativeBindings.nativeLm());
@@ -422,14 +423,29 @@ const _startTopRenderLoop = () => {
       if (window) {
         window.runAsync(JSON.stringify({
           method: 'response',
+          hmdType,
         }));
       } else {
         console.warn(`no top level window to respond to for request present: ${hmdType} ${windowId}`);
       }
     } else if (vrRequestMethod === 2) { // exitPresent
-      console.log('exit present'); // XXX
+      if (topVrPresentState.hmdType === 'fake') {
+        // XXX destroy fbo
+      } else {
+        throw new Error(`fail to exit present for hmd type ${topVrPresentState.hmdType}`);
+      }
+
+      topVrPresentState.hmdType = null;
+
+      const windowId = xrState.vrRequest[1];
+      const window = windows.find(window => window.id === windowId);
       
-      xrState.vrRequest[0] = 0;
+      xrState.isPresenting[0] = 0;
+      xrState.vrRequest.fill(0);
+
+      window.runAsync(JSON.stringify({
+        method: 'response',
+      }));
     }
   };
   const _waitGetPoses = async () => {

@@ -274,7 +274,7 @@ class VRDisplay extends EventEmitter {
     
     const [{source: canvas}] = layers;
     const {_context: context} = canvas;
-    this.session.device.onmakeswapchain(context);
+    this.onmakeswapchain(context);
 
     if (this.onvrdisplaypresentchange && !this.isPresenting) {
       this.isPresenting = true;
@@ -285,14 +285,12 @@ class VRDisplay extends EventEmitter {
   }
 
   async exitPresent() {
-    if (this.onexitpresent) {
-      await this.onexitpresent();
-    }
-
     for (let i = 0; i < this._rafs.length; i++) {
       this.cancelAnimationFrame(this._rafs[i]);
     }
     this._rafs.length = 0;
+    
+    await this.onexitpresent();
 
     if (this.onvrdisplaypresentchange && this.isPresenting) {
       this.isPresenting = false;
@@ -404,51 +402,25 @@ class FakeVRDisplay extends VRDisplay {
     GlobalContext.xrState.rightProjectionMatrix.set(projectionMatrix);
   } */
 
-  async requestPresent(layers) {
-    GlobalContext.xrState.renderWidth[0] = this.window.innerWidth / 2;
-    GlobalContext.xrState.renderHeight[0] = this.window.innerHeight;
-
-    await this.onrequestpresent();
-    
-    const [{source: canvas}] = layers;
-    const {_context: context} = canvas;
-    this.onmakeswapchain(context);
-    
-    // const [fbo, msFbo, msTex, msDepthTex] = nativeWindow.createVrChildRenderTarget(context, GlobalContext.xrState.renderWidth[0]*2, GlobalContext.xrState.renderHeight[0]);
-    // context.setDefaultFramebuffer(msFbo);
-    // nativeWindow.bindVrChildFbo(context, fbo, GlobalContext.xrState.tex[0], GlobalContext.xrState.depthTex[0]);
-
-    if (this.onvrdisplaypresentchange && !this.isPresenting) {
-      this.isPresenting = true;
-      this.onvrdisplaypresentchange();
-    } else {
-      this.isPresenting = true;
-    }
-  }
-
-  exitPresent() {
-    return Promise.resolve().then(() => {
-      if (this.onvrdisplaypresentchange && this.isPresenting) {
-        this.isPresenting = false;
-        this.onvrdisplaypresentchange();
-      } else {
-        this.isPresenting = false;
-      }
-    });
-  }
-
   async requestSession({exclusive = true} = {}) {
     const self = this;
 
-    GlobalContext.xrState.renderWidth[0] = this.window.innerWidth / 2;
-    GlobalContext.xrState.renderHeight[0] = this.window.innerHeight;
-
     await this.onrequestpresent();
     
+    const {xrState} = GlobalContext;
+
     const session = {
       addEventListener(e, fn) {
         if (e === 'end') {
           self._onends.push(fn);
+        }
+      },
+      removeEventListener(e, fn) {
+        if (e === 'end') {
+          const index = self._onends.indexOf(fn);
+          if (index !== -1) {
+            self._onends.splice(index, 1);
+          }
         }
       },
       device: self,
@@ -462,19 +434,22 @@ class FakeVRDisplay extends VRDisplay {
         return Promise.resolve({});
       },
       requestAnimationFrame(fn) {
-        return this.device.onrequestanimationframe(timestamp => {
+        return self.requestAnimationFrame(timestamp => {
           fn(timestamp, this._frame);
         });
       },
-      end() {
-        for (let i = 0; i < self._onends.length; i++) {
-          self._onends[i]();
+      cancelAnimationFrame: fn => self.cancelAnimationFrame(fn),
+      async end() {
+        await self.exitPresent();
+
+        xrState.fakeVrDisplayEnabled[0] = 1;
+
+        const onends = self._onends.slice();
+        for (let i = 0; i < onends.length; i++) {
+          onends[i]();
         }
-        return self.exitPresent();
       },
     };
-
-    const {xrState} = GlobalContext;
     const _frame = {
       session,
       views: [{
