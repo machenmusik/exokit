@@ -1510,33 +1510,29 @@ if (!options.require) {
 }
 global.process = undefined;
 global.onrunasync = method => {
-  try {
-    if (method === 'tickAnimationFrame') {
-      return global.tickAnimationFrame();
-    } else if (/^\{"method":"response"/.test(method)) {
-      if (vrPresentState.responseAccept) {
-        const res = JSON.parse(method);
-        
-        const {responseAccept} = vrPresentState;
-        vrPresentState.responseAccept = null;
-        responseAccept(res);
-        return Promise.resolve();
-      } else {
-        return Promise.reject(new Error(`unexpected window response`));
-      }
-    } else if (/^\{"method":"eval"/.test(method)) {
-      try {
-        const result = eval(JSON.parse(method).scriptString);
-        const finalResult = Promise.resolve(result);
-        return finalResult;
-      } catch (err) {
-        return Promise.reject(new Error(`eval err: ${method}`));
-      }
+  if (method === 'tickAnimationFrame') {
+    return global.tickAnimationFrame();
+  } else if (/^\{"method":"response"/.test(method)) {
+    if (vrPresentState.responseAccept) {
+      const res = JSON.parse(method);
+
+      const {responseAccept} = vrPresentState;
+      vrPresentState.responseAccept = null;
+      responseAccept(res);
+      return Promise.resolve();
     } else {
-      return Promise.reject(new Error(`invalid window async method: ${method}`));
+      return Promise.reject(new Error(`window async unexpected response`));
     }
-  } catch (err) {
-    return Promise.reject(new Error(`internal error: ${err.message}`));
+  } else if (/^\{"method":"eval"/.test(method)) {
+    try {
+      const result = eval(JSON.parse(method).scriptString);
+      const finalResult = Promise.resolve(result);
+      return finalResult;
+    } catch (err) {
+      return Promise.reject(new Error(`window async eval error: ${method}`));
+    }
+  } else {
+    return Promise.reject(new Error(`invalid window async method: ${method}`));
   }
 };
 global.onexit = () => {
