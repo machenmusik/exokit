@@ -1536,10 +1536,8 @@ global.onrunasync = method => {
   }
 };
 global.onexit = () => {
-  let context = contexts.pop();
-  while (context) {
+  for (let context = contexts.pop(); context; context = contexts.pop()) {
     context.destroy();
-    context = contexts.pop();
   }
 };
 // global.setImmediate = undefined; // need this for the TLS implementation

@@ -8,9 +8,6 @@ class WorkerVm extends EventEmitter {
   constructor(options = {}) {
     super();
 
-    this.unresolveds = {};
-    this.unresolvedsId = 0;
-
     const worker = new Worker(windowBasePath, {
       workerData: {
         initModule: options.initModule,
@@ -78,15 +75,11 @@ class WorkerVm extends EventEmitter {
     });
   }
   runAsync(jsString, arg, transferList) {
-    const id = this.unresolvedsId++;
     return new Promise((accept, reject) => {
-      this.unresolveds[id] = {accept, reject};
       const requestKey = this.queueRequest((err, result) => {
         if (!err) {
-          delete this.unresolveds[id];
           accept(result);
         } else {
-          delete this.unresolveds[id];
           reject(err);
         }
       });
@@ -105,48 +98,20 @@ class WorkerVm extends EventEmitter {
     }, transferList);
   }
   
-  destroy(transferList) {
-    return new Promise((accept, reject) => {
-      let done = false;
-      if (this.worker != null) {
-        const requestKey = this.queueRequest((err, result) => {
-          if (!done) {
-            if (!err) {
-              accept(result);
-              done = true;
-            } else {
-              reject(err);
-              done = true;
-            }
-          } else {
-          }
-        });
-        this.worker.postMessage({
-          method: 'runExit',
-          requestKey,
-        }, transferList);
-      } else {
-        let unresolveds = this.unresolveds;
-        this.unresolveds = {};
-        for (let {accept, reject} of Object.values(unresolveds)) {
-          accept('terminated');
-        }
-        done = true;
+  destroy() {
+    const requestKey = this.queueRequest((err, result) => {
+      if (err) {
+        console.warn(err.stack);
       }
-      setTimeout(() => {
-        if (!done) {
-          console.log("WARNING: Exokit worker took too long to exit; forcefully quitting.");
-          done = true;
-          this.worker.terminate((err, exitCode) => {
-            let unresolveds = this.unresolveds;
-            this.unresolveds = {};
-            for (let {accept, reject} of Object.values(unresolveds)) {
-              accept('terminated');
-            }
-            accept();
-          });
+      this.worker.terminate((err, exitCode) => {
+        if (err) {
+          console.warn(err.stack);
         }
-      }, 3000);
+      });
+    });
+    this.worker.postMessage({
+      method: 'runExit',
+      requestKey,
     });
   }
 
@@ -212,11 +177,12 @@ const _makeWindow = (options = {}) => {
       window.on('exit', () => {
         accept();
       });
-      destroy.apply(this, arguments).then(() => {
-        accept();
-      }).catch((err) => {
-        reject(err ? err.stack : null);
-      });
+      destroy.apply(this, arguments);
+        /* .then(() => {
+          accept();
+        }).catch((err) => {
+          reject(err ? err.stack : null);
+        }); */
     });
   })(window.destroy);
   

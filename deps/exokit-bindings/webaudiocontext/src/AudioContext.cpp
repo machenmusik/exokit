@@ -31,7 +31,7 @@ Local<Object> AudioContext::Initialize(Isolate *isolate, Local<Value> audioListe
   );
 #endif
 
-  uv_async_init(windowsystembase::GetEventLoop(), &threadAsync, RunInMainThread);
+  // uv_async_init(windowsystembase::GetEventLoop(), &threadAsync, RunInMainThread);
   uv_sem_init(&threadSemaphore, 0);
 
   /* atexit([]{
