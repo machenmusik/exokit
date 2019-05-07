@@ -1102,9 +1102,7 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
   window.cancelAnimationFrame = id => {
     const index = rafCbs.findIndex(r => r && r[symbols.idSymbol] === id);
     if (index !== -1) {
-      rafCbs.splice(index, 1);
-    } else {
-      console.log('window.cancelAnimationFrame FAILED', id);
+      rafCbs[index] = null;
     }
   };
   window.postMessage = (postMessage => function(data) {
@@ -1328,7 +1326,7 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
 
             const index = rafCbs.indexOf(rafCb); // could have changed due to sorting
             if (index !== -1) {
-              rafCbs.splice(index, 1);
+              rafCbs[index] = null;
             }
           }
         }
