@@ -23,6 +23,8 @@ class XR extends EventEmitter {
   }
   async requestDevice() {
     const hmdType = getHMDType();
+    
+    console.log('hmd request device', hmdType);
 
     if (hmdType) {
       if (hmdType === 'fake') {
@@ -57,8 +59,21 @@ class XRDevice {
   supportsSession() {
     return Promise.resolve(null);
   }
-  async requestSession({exclusive = false, outputContext = null} = {}) {
+  async requestSession({exclusive = false, outputContext = null, extensions = {}} = {}) {
     if (!this.session) {
+      if (extensions.meshing) {
+        GlobalContext.xrState.meshing[0] = 1;
+      }
+      if (extensions.planeTracking) {
+        GlobalContext.xrState.planeTracking[0] = 1;
+      }
+      if (extensions.handTracking) {
+        GlobalContext.xrState.handTracking[0] = 1;
+      }
+      if (extensions.eyeTracking) {
+        GlobalContext.xrState.eyeTracking[0] = 1;
+      }
+      
       const session = new XRSession({
         device: this,
         exclusive,
@@ -85,7 +100,7 @@ class XRSession extends EventTarget {
 
     this._frame = new XRPresentationFrame(this);
     this._frameOfReference = new XRFrameOfReference();
-    this._inputSources = (() => {
+    this._gamepadInputSources = (() => {
       const result = Array(2 + maxNumTrackers);
       for (let i = 0; i < maxNumTrackers; i++) {
         let hand, targetRayMode;
@@ -99,10 +114,23 @@ class XRSession extends EventTarget {
           hand = null;
           targetRayMode = 'tracker';
         }
-        result[i] = new XRInputSource(hand, targetRayMode, i);
+        result[i] = new XRInputSource(hand, targetRayMode, GlobalContext.xrState.gamepads[i]);
       }
       return result;
     })();
+    this._handInputSources = (() => {
+      const result = [
+        new XRInputSource('left', 'hand', GlobalContext.xrState.hands[0]),
+        new XRInputSource('right', 'hand', GlobalContext.xrState.hands[1]),
+      ];
+      for (let i = 0; i < result.length; i++) {
+        const inputSource = result[i];
+        inputSource.wrist = inputSource._xrStateGamepad.wrist;
+        inputSource.fingers = inputSource._xrStateGamepad.fingers;
+      }
+      return result;
+    })();
+    this._eyeInputSource = new XRInputSource('', 'gaze', GlobalContext.xrState.eye);
     this._lastPresseds = [false, false];
     this._rafs = [];
   }
@@ -138,7 +166,14 @@ class XRSession extends EventTarget {
     return Promise.resolve(this._frameOfReference);
   }
   getInputSources() {
-    return this._inputSources.filter(inputSource => inputSource.connected);
+    const inputSources = this._gamepadInputSources.filter(inputSource => inputSource.connected);
+    if (GlobalContext.xrState.handTracking[0]) {
+      inputSources.push.apply(inputSources, this._handInputSources);
+    }
+    if (GlobalContext.xrState.eyeTracking[0]) {
+      inputSources.push(this._eyeInputSource);
+    }
+    return inputSources;
   }
   requestAnimationFrame(fn) {
     if (this.device.onrequestanimationframe) {
@@ -176,12 +211,13 @@ class XRSession extends EventTarget {
     return Promise.resolve();
   }
   update() {
-    const gamepads = GlobalContext.getGamepads(this.device.window);
-    
-    for (let i = 0; i < gamepads.length; i++) {
+    const inputSources = this.getInputSources();
+    const gamepads = GlobalContext.getGamepads();
+
+    for (let i = 0; i < inputSources.length; i++) {
+      const inputSource = inputSources[i];
       const gamepad = gamepads[i];
-      const inputSource = this._inputSources[i];
-      
+
       const pressed = gamepad.buttons[1].pressed;
       const lastPressed = this._lastPresseds[i];
       if (pressed && !lastPressed) {
@@ -404,7 +440,7 @@ class XRPresentationFrame {
 
     if (this.session.baseLayer) {
       const {xrOffset} = this.session.baseLayer.context.canvas.ownerDocument;
-      
+
       if (xrOffset) {
         localMatrix
           .premultiply(
@@ -417,7 +453,7 @@ class XRPresentationFrame {
       .toArray(inputSource._pose.targetRay.transformMatrix)
     localMatrix
       .toArray(inputSource._pose.gripMatrix);
-    
+
     return inputSource._pose;
   }
 }
@@ -488,21 +524,22 @@ class XRDevicePose {
 module.exports.XRDevicePose = XRDevicePose;
 
 class XRInputSource {
-  constructor(handedness = 'left', targetRayMode = 'tracked-pointer', index = 0) {
+  constructor(handedness, targetRayMode, xrStateGamepad) {
     this.handedness = handedness;
     this.targetRayMode = targetRayMode;
-    this._index = index;
+    this._xrStateGamepad = xrStateGamepad;
 
     this._pose = new XRInputPose();
-    const gamepad = GlobalContext.xrState.gamepads[index];
-    this._pose.targetRay.origin.values = gamepad.position;
-    this._pose.targetRay.direction.values = gamepad.direction;
-    this._pose._localPointerMatrix = gamepad.transformMatrix;
+    this._pose.targetRay.origin.values = xrStateGamepad.position;
+    this._pose.targetRay.direction.values = xrStateGamepad.direction;
+    this._pose._localPointerMatrix = xrStateGamepad.transformMatrix;
   }
   get connected() {
-    return GlobalContext.xrState.gamepads[this._index].connected[0] !== 0;
+    return this._xrStateGamepad.connected[0] !== 0;
   }
-  set connected(connected) {}
+  set connected(connected) {
+    this._xrStateGamepad.connected[0] = connected ? 1 : 0;
+  }
 }
 module.exports.XRInputSource = XRInputSource;
 

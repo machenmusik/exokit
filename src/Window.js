@@ -637,7 +637,7 @@ const _normalizeUrl = utils._makeNormalizeUrl(options.baseUrl);
       }
       return window[symbols.mrDisplaysSymbol].fakeVrDisplay;
     },
-    getGamepads: getGamepads.bind(null, window),
+    getGamepads,
     clipboard: {
       read: () => Promise.resolve(), // Not implemented yet
       readText: () => new Promise(resolve => {
@@ -1560,22 +1560,95 @@ global.onrunasync = request => {
       }
       break;
     }
-    case 'meshes':
-    case 'planes': {
+    case 'keyEvent': {
+      const {event} = request;
+      switch (event.type) {
+        case 'keydown':
+        case 'keypress':
+        case 'keyup': {
+          if (vrPresentState.glContext) {
+            const {canvas} = vrPresentState.glContext;
+            canvas.dispatchEvent(new global.KeyboardEvent(event.type, event));
+          }
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+      break;
+    }
+    case 'meshes': {
       for (let i = 0; i < windows.length; i++) {
         windows[i].runAsync(request);
       }
-      
-      const fakeVrDisplay = global[symbols.mrDisplaysSymbol].fakeVrDisplay;
-      if (fakeVrDisplay.session) {
+
+      const {xrOffset} = global.document;
+
+      const presentingVrDisplays = [
+        global[symbols.mrDisplaysSymbol].fakeVrDisplay,
+        global[symbols.mrDisplaysSymbol].vrDevice,
+      ].filter(vrDisplay => !!vrDisplay.session);
+      if (presentingVrDisplays.length > 0) {
+        const presentingVrDisplay = presentingVrDisplays[0];
         for (let i = 0; i < request.updates.length; i++) {
           const update = request.updates[i];
+
+          if (xrOffset) { // XXX
+            localMatrix
+              .fromArray(update.transformMatrix)
+              .premultiply(
+                localMatrix2.compose(
+                  localVector.fromArray(xrOffset.position),
+                  localQuaternion.fromArray(xrOffset.orientation),
+                  localVector2.fromArray(xrOffset.scale)
+                )
+              )
+              .toArray(update.transformMatrix);          
+          }
           const e = new SpatialEvent(update.type, {
             detail: {
               update,
             },
           });
-          fakeVrDisplay.session.dispatchEvent(e);
+          presentingVrDisplay.session.dispatchEvent(e);
+        }
+      }
+      break;
+    }
+    case 'planes': {
+      for (let i = 0; i < windows.length; i++) {
+        windows[i].runAsync(request);
+      }
+      
+      const {xrOffset} = global.document;
+      const transformMatrix = new Float32Array(16);
+      if (xrOffset) {
+        localMatrix.compose(
+          localVector.fromArray(xrOffset.position),
+          localQuaternion.fromArray(xrOffset.orientation),
+          localVector2.fromArray(xrOffset.scale)
+        );
+      }
+      
+      const presentingVrDisplays = [
+        global[symbols.mrDisplaysSymbol].fakeVrDisplay,
+        global[symbols.mrDisplaysSymbol].vrDevice,
+      ].filter(vrDisplay => !!vrDisplay.session);
+      if (presentingVrDisplays.length > 0) {
+        const presentingVrDisplay = presentingVrDisplays[0];
+        for (let i = 0; i < request.updates.length; i++) {
+          const update = request.updates[i];
+          if (xrOffset) { // XXX
+            localVector.fromArray(update.position).applyMatrix4(localMatrix).toArray(update.position);
+            localVector.fromArray(update.normal).applyMatrix4(localMatrix).toArray(update.normal);
+          }
+          const e = new SpatialEvent(update.type, {
+            detail: {
+              update,
+            },
+          });
+          presentingVrDisplay.session.dispatchEvent(e);
         }
       }
       break;

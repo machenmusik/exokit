@@ -278,7 +278,7 @@ const xrState = (() => {
     for (let i = 0; i < result.length; i++) {
       const hand = _makeGamepad();
       hand.wrist = (() => {
-        const result = Array(3);
+        const result = Array(4);
         for (let i = 0; i < result.length; i++) {
           result[i] = _makeTypedArray(Float32Array, 3);
         }
@@ -415,6 +415,44 @@ const requestPresent = async () => {
     xrState.depthTex[0] = depthTex;
     xrState.renderWidth[0] = halfWidth;
     xrState.renderHeight[0] = height;
+    
+    nativeBindings.nativeMl.SetEventHandler(e => {
+      console.log('got ml event', e);
+
+      // const window = canvas.ownerDocument.defaultView;
+
+      switch (e.type) {
+        case 'newInitArg':
+        case 'resume':
+        case 'unloadResources': {
+          break;
+        }
+        case 'stop':
+        case 'pause': {
+          if (mlPresentState.mlContext) {
+            mlPresentState.mlContext.Exit();
+          }
+          nativeBindings.nativeMl.DeinitLifecycle();
+          process.exit();
+          break;
+        }
+        case 'keydown':
+        case 'keypress':
+        case 'keyup': {
+          const request = {
+            method: 'keyEvent',
+            event: e,
+          };
+          for (let i = 0; i < windows.length; i++) {
+            windows[i].runAsync(request);
+          }
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    });
   } else {
     throw new Error('unknown hmd type');
   }
@@ -430,6 +468,8 @@ GlobalContext.requestPresent = requestPresent;
 const exitPresent = async () => {
   if (topVrPresentState.hmdType === 'fake') {
     // XXX destroy fbo
+  } else if (topVrPresentState.hmdType === 'magicleap') {
+    nativeBindings.nativeMl.SetEventHandler(null);
   } else {
     throw new Error(`fail to exit present for hmd type ${topVrPresentState.hmdType}`);
   }
@@ -439,8 +479,13 @@ const exitPresent = async () => {
 };
 GlobalContext.exitPresent = exitPresent;
 const requestHitTest = (origin, direction, coordinateSystem) => {
-  if (topVrPresentState.mesher) {
+  if (topVrPresentState.hmdType === 'fake') {
+    if (!topVrPresentState.mesher) {
+      _startFakeMesher();
+    }
     return topVrPresentState.mesher.requestHitTest(origin, direction, coordinateSystem);
+  } else if (topVrPresentState.hmdType === 'magicleap') {
+    return topVrPresentState.vrContext.requestHitTest(origin, direction, coordinateSystem);
   } else {
     return Promise.resolve([]);
   }
@@ -928,38 +973,41 @@ const _startTopRenderLoop = () => {
 
       const _loadExtensions = () => {
         if (xrState.meshing[0] && !topVrPresentState.mesher) {
-          topVrPresentState.mesher = topVrPresentState.vrContext.requestMeshing();
-        } else if (!xrState.meshing[0] && topVrPresentState.mesher) {
+          topVrPresentState.mesher = topVrPresentState.vrContext.requestMeshing(5, 2);
+        } /* else if (!xrState.meshing[0] && topVrPresentState.mesher) {
           topVrPresentState.mesher.destroy();
           topVrPresentState.mesher = null;
-        }
+        } */
         if (xrState.planeTracking[0] && !topVrPresentState.planeTracker) {
-          topVrPresentState.planeTracker = topVrPresentState.vrContext.requestPlaneTracking();
-        } else if (!xrState.planeTracking[0] && topVrPresentState.planeTracker) {
+          topVrPresentState.planeTracker = topVrPresentState.vrContext.requestPlaneTracking(10);
+        } /* else if (!xrState.planeTracking[0] && topVrPresentState.planeTracker) {
           topVrPresentState.planeTracker.destroy();
           topVrPresentState.planeTracker = null;
-        }
+        } */
         if (xrState.handTracking[0] && !topVrPresentState.handTracker) {
           topVrPresentState.handTracker = topVrPresentState.vrContext.requestHandTracking();
-        } else if (!xrState.handTracking[0] && topVrPresentState.handTracker) {
+        } /* else if (!xrState.handTracking[0] && topVrPresentState.handTracker) {
           topVrPresentState.handTracker.destroy();
           topVrPresentState.handTracker = null;
-        }
+        } */
         if (xrState.eyeTracking[0] && !topVrPresentState.eyeTracker) {
+          console.log('js start eye tracking 1', Object.keys(topVrPresentState.vrContext));
           topVrPresentState.eyeTracker = topVrPresentState.vrContext.requestEyeTracking();
-        } else if (!xrState.eyeTracking[0] && topVrPresentState.eyeTracker) {
+          console.log('js start eye tracking 2');
+        } /* else if (!xrState.eyeTracking[0] && topVrPresentState.eyeTracker) {
           topVrPresentState.eyeTracker.destroy();
           topVrPresentState.eyeTracker = null;
-        }
+        } */
       };
       _loadExtensions();
 
-      nativeBindings.nativeMl.Update(topVrPresentState.vrContext);
+      topVrPresentState.vrContext.update();
 
       const _waitExtensions = () => {
         if (topVrPresentState.mesher) {
           const updates = topVrPresentState.mesher.waitGetPoses();
           if (updates) {
+            console.log('top js mesh updates', updates.length);
             const request = {
               method: 'meshes',
               updates,
@@ -972,6 +1020,7 @@ const _startTopRenderLoop = () => {
         if (topVrPresentState.planeTracker) {
           const updates = topVrPresentState.planeTracker.waitGetPoses();
           if (updates) {
+            console.log('top js plane updates', updates.length);
             const request = {
               method: 'planes',
               updates,
@@ -982,31 +1031,14 @@ const _startTopRenderLoop = () => {
           }
         }
         if (topVrPresentState.handTracker) {
+          console.log('top js hand tracker update 1');
           topVrPresentState.handTracker.waitGetPoses(xrState.hands);
+          console.log('top js hand tracker update 2');
         }
         if (topVrPresentState.eyeTracker) {
-          /* const blink = (Date.now() % 2000) < 200;
-          const blinkAxis = blink ? -1 : 1;
-
-          const eye = xrState.eye;
-          localMatrix
-            .fromArray(GlobalContext.xrState.leftViewMatrix)
-            .getInverse(localMatrix)
-            .decompose(localVector, localQuaternion, localVector2);
-          localVector
-            .add(
-              localVector2.set(0, 0, -1)
-                .applyQuaternion(localQuaternion)
-            )
-            .toArray(eye.position);
-          localQuaternion.toArray(eye.orientation);
-          // localVector.set(0, 0, -1).toArray(eye.position);
-          // localQuaternion.set(0, 0, 0, 1).toArray(eye.orientation);
-
-          eye.axes[0] = blinkAxis;
-          eye.axes[1] = blinkAxis; */
-
+          console.log('top js eye tracker update 1');
           topVrPresentState.eyeTracker.waitGetPoses(xrState.eye);
+          console.log('top  js eye tracker update 2', xrState.eye.position.join(','), xrState.eye.orientation.join(','));
         }
       };
       _waitExtensions();
@@ -1028,41 +1060,21 @@ const _startTopRenderLoop = () => {
 
       const _updateMeshing = () => {
         if (xrState.meshing[0] && !topVrPresentState.mesher) {
-          const mesher = new FakeMesher();
-          mesher.on('meshes', updates => {
-            const request = {
-              method: 'meshes',
-              updates,
-            };
-            for (let i = 0; i < windows.length; i++) {
-              windows[i].runAsync(request);
-            }
-          });
-          topVrPresentState.mesher = mesher;
-        } else if (!xrState.meshing[0] && topVrPresentState.mesher) {
+          _startFakeMesher();
+        } /* else if (!xrState.meshing[0] && topVrPresentState.mesher) {
           topVrPresentState.mesher.destroy();
           topVrPresentState.mesher = null;
-        }
+        } */
       };
       _updateMeshing();
       
       const _updatePlanes = () => {
         if (xrState.planeTracking[0] && !topVrPresentState.planeTracker) {
-          const planeTracker = new FakePlaneTracker();
-          planeTracker.on('planes', updates => {
-            const request = {
-              method: 'planes',
-              updates,
-            };
-            for (let i = 0; i < windows.length; i++) {
-              windows[i].runAsync(request);
-            }
-          });
-          topVrPresentState.planeTracker = planeTracker;
-        } else if (!xrState.planeTracking[0] && topVrPresentState.planeTracker) {
+          _startFakePlaneTracker();
+        } /* else if (!xrState.planeTracking[0] && topVrPresentState.planeTracker) {
           topVrPresentState.planeTracker.destroy();
           topVrPresentState.planeTracker = null;
-        }
+        } */
       };
       _updatePlanes();
 
@@ -1126,6 +1138,7 @@ const _startTopRenderLoop = () => {
           // localVector.set(0, 0, -1).toArray(eye.position);
           // localQuaternion.set(0, 0, 0, 1).toArray(eye.orientation);
 
+          console.log('set blink', eye.axes.slice(0, 2));
           eye.axes[0] = blinkAxis;
           eye.axes[1] = blinkAxis;
         }
@@ -1191,10 +1204,15 @@ const _startTopRenderLoop = () => {
     for (let i = 0; i < xrState.gamepads.length; i++) {
       _deriveGamepadData(xrState.gamepads[i]);
     }
-    for (let i = 0; i < xrState.hands.length; i++) {
-      _deriveGamepadData(xrState.hands[i]);
+    if (xrState.handTracking[0]) {
+      for (let i = 0; i < xrState.hands.length; i++) {
+        _deriveGamepadData(xrState.hands[i]);
+      }
     }
-    _deriveGamepadData(xrState.eye);
+    if (xrState.eyeTracking[0]) {
+      _deriveGamepadData(xrState.eye);
+    }
+    // console.log('top level derive eye', xrState.eye.position.join(','), xrState.eye.orientation.join(','), xrState.eye.transformMatrix.join(','));
 
     if (args.performance) {
       const now = Date.now();
@@ -1269,6 +1287,33 @@ const _startTopRenderLoop = () => {
   };
 };
 _startTopRenderLoop();
+
+const _startFakeMesher = () => {
+  const mesher = new FakeMesher();
+  mesher.on('meshes', updates => {
+    const request = {
+      method: 'meshes',
+      updates,
+    };
+    for (let i = 0; i < windows.length; i++) {
+      windows[i].runAsync(request);
+    }
+  });
+  topVrPresentState.mesher = mesher;
+};
+const _startFakePlaneTracker = () => {
+  const planeTracker = new FakePlaneTracker();
+  planeTracker.on('planes', updates => {
+    const request = {
+      method: 'planes',
+      updates,
+    };
+    for (let i = 0; i < windows.length; i++) {
+      windows[i].runAsync(request);
+    }
+  });
+  topVrPresentState.planeTracker = planeTracker;
+};
 
 const _prepare = () => Promise.all([
   (() => {

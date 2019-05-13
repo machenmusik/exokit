@@ -91,18 +91,26 @@
     }
 
     function animate(time, frame) {
+      console.log('eye tracking example animate 1', !!display, !!(display && display.session));
       const _updateEyeMesh = () => {
-        const eyeInputSources = display.session.getInputSources().filter(inputSource => inputSource.targetRayMode === 'gaze');
-        if (eyeInputSources.length > 0 && frame) {
-          const eyeInputSource = eyeInputSources[0];
-          const {axes, offsetMatrix} = eyeInputSource;
-          const pose = frame.getInputPose(eyeInputSource);
+        if (display && display.session && frame) {
+          const eyeInputSources = display.session.getInputSources().filter(inputSource => inputSource.targetRayMode === 'gaze');
+          const eyeGamepads = navigator.getGamepads().filter(gamepad => gamepad.id === 'eye');
+          console.log('eye tracking example animate 2', eyeInputSources.length, eyeGamepads.length);
+          if (eyeInputSources.length > 0 && eyeGamepads.length > 0) {
+            const eyeInputSource = eyeInputSources[0];
+            const eyeGamepad = eyeGamepads[0];
 
-          eyeMesh.matrix.fromArray(offsetMatrix);
-          eyeMesh.matrix.decompose(eyeMesh.position, eyeMesh.quaternion, eyeMesh.scale);
-          const scaleFactor = axes.some(axis => axis < 0) ? 0.2 : 1;
-          eyeMesh.scale.set(1, scaleFactor, 1);
-          eyeMesh.updateMatrixWorld();
+            const pose = frame.getInputPose(eyeInputSource);
+            const {axes/*, offsetMatrix*/} = eyeGamepad;
+
+            eyeMesh.matrix.fromArray(pose.targetRay.transformMatrix);
+            eyeMesh.matrix.decompose(eyeMesh.position, eyeMesh.quaternion, eyeMesh.scale);
+            console.log('eye tracking example animate 3', eyeMesh.position.toArray().join(','), eyeMesh.quaternion.toArray().join(','), axes.slice(0, 2).join(','));
+            const scaleFactor = axes.some(axis => axis < 0) ? 0.2 : 1;
+            eyeMesh.scale.set(1, scaleFactor, 1);
+            eyeMesh.updateMatrixWorld();
+          }
         }
       };
       _updateEyeMesh();
