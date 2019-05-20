@@ -43,10 +43,6 @@ after_test:
       mv dist\*.exe exokit-win-x64.exe
       . "C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Bin\signtool.exe" sign /f .\metadata\codesign-windows.pfx /p "$env:PFX_KEY" exokit-win-x64.exe
 
-artifacts:
-  - path: "exokit-win-x64.exe"
-    name: exokit-windows-installer
-
 deploy:
   - provider: GitHub
     description: 'Exokit installer'
