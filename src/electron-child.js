@@ -100,7 +100,21 @@ const _consumeInput = () => {
           });
           mainWindow.setMenu(null);
           mainWindow.setResizable(false);
-          mainWindow.setAlwaysOnTop(true, 'floating');
+          let alwaysOnTop = false;
+          Object.defineProperty(mainWindow, 'alwaysOnTop', {
+            get() {
+              return alwaysOnTop;
+            },
+            set(value) {
+              alwaysOnTop = !!value;
+              if (alwaysOnTop) {
+                mainWindow.setAlwaysOnTop(true, 'floating');
+              } else {
+                mainWindow.setAlwaysOnTop(false);
+              }
+            },
+          });
+          mainWindow.alwaysOnTop = true;
           mainWindow.loadURL(url)
             .then(() => {
               const b = Uint32Array.from([TYPES.LOAD, 200]);
@@ -206,6 +220,7 @@ const _consumeInput = () => {
           const {width, height} = e;
           mainWindow.setResizable(true);
           mainWindow.setSize(width, height);
+          mainWindow.alwaysOnTop = mainWindow.alwaysOnTop;
           mainWindow.setResizable(false);
           break;
         }
@@ -227,12 +242,7 @@ const _consumeInput = () => {
           break;
         }
         case 'setAlwaysOnTop': {
-          const {value} = e;
-          if (value) {
-            mainWindow.setAlwaysOnTop(true, 'floating');
-          } else {
-            mainWindow.setAlwaysOnTop(false);
-          }
+          mainWindow.alwaysOnTop = e.value;
           break;
         }
         case 'postMessage': {
